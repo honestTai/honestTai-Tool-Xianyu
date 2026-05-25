@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import traceback
+import base64
 from pathlib import Path
 
 APP_NAME = "honestTai-Tool-Xianyu"
@@ -20,6 +21,7 @@ RUNTIME_DIR = (
     else Path(__file__).resolve().parent
 )
 _DEVNULL_STREAMS = []
+_SERVER_RUNTIME = {"server": None, "thread": None}
 
 
 def _sync_runtime_asset(name: str) -> None:
@@ -79,6 +81,13 @@ def _wait_for_server(host: str, port: int, timeout_seconds: float = 30.0) -> boo
     return False
 
 
+def _find_available_port(preferred_port: int) -> int:
+    for port in range(preferred_port, preferred_port + 100):
+        if not _is_port_open(APP_HOST, port):
+            return port
+    raise RuntimeError(f"No free local port found near {preferred_port}")
+
+
 def _start_embedded_server(app, port: int):
     import uvicorn
 
@@ -95,20 +104,179 @@ def _start_embedded_server(app, port: int):
     return server, thread
 
 
-def _open_desktop_window(url: str) -> None:
+def _asset_data_uri(path: Path) -> str:
+    if not path.exists():
+        return ""
+    try:
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except Exception:
+        return ""
+
+
+def _loading_html() -> str:
+    icon_uri = _asset_data_uri(RUNTIME_DIR / "assets" / "app-icon.png")
+    icon_html = f'<img src="{icon_uri}" alt="" />' if icon_uri else '<div class="fallback-icon"></div>'
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: #eaf2ff;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(0, 209, 255, 0.28), transparent 28%),
+        radial-gradient(circle at 70% 76%, rgba(48, 235, 145, 0.22), transparent 30%),
+        linear-gradient(135deg, #06111f, #0b2346 52%, #07111f);
+    }}
+    .shell {{
+      width: min(520px, calc(100vw - 48px));
+      padding: 38px 34px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 26px;
+      background: rgba(8, 22, 43, 0.68);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.34);
+      text-align: center;
+      backdrop-filter: blur(18px);
+    }}
+    img, .fallback-icon {{
+      width: 92px;
+      height: 92px;
+      border-radius: 24px;
+      margin-bottom: 22px;
+      filter: drop-shadow(0 18px 32px rgba(0, 188, 255, 0.26));
+    }}
+    .fallback-icon {{
+      margin-inline: auto;
+      background: linear-gradient(135deg, #16d9ff, #2f7cff);
+    }}
+    h1 {{
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0;
+      font-weight: 800;
+    }}
+    p {{
+      margin: 12px 0 0;
+      color: #aebfda;
+      font-size: 15px;
+    }}
+    .loader {{
+      height: 6px;
+      overflow: hidden;
+      margin-top: 30px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+    }}
+    .loader::before {{
+      content: "";
+      display: block;
+      width: 42%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #27f1ff, #34e89e);
+      animation: sweep 1.15s ease-in-out infinite;
+    }}
+    @keyframes sweep {{
+      0% {{ transform: translateX(-110%); }}
+      100% {{ transform: translateX(260%); }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    {icon_html}
+    <h1>honestTai-Tool-Xianyu</h1>
+    <p>正在启动本地服务，请稍等...</p>
+    <div class="loader" aria-hidden="true"></div>
+  </main>
+</body>
+</html>"""
+
+
+def _startup_error_html(message: str) -> str:
+    return f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body {{
+      margin: 0;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: #1f2937;
+      background: #f8fafc;
+    }}
+    main {{
+      max-width: 560px;
+      padding: 32px;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    }}
+    h1 {{ margin: 0 0 12px; font-size: 22px; }}
+    pre {{ white-space: pre-wrap; color: #ef4444; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>启动失败</h1>
+    <pre>{message}</pre>
+  </main>
+</body>
+</html>"""
+
+
+def _start_server_and_load(window, preferred_port: int) -> None:
+    try:
+        from src.app import app
+
+        port = _find_available_port(preferred_port)
+        url = f"http://{APP_HOST}:{port}"
+        if port != preferred_port:
+            _log(f"Configured port {preferred_port} is busy, using {port}")
+
+        _log(f"Starting embedded server at {url}")
+        server, thread = _start_embedded_server(app, port)
+        _SERVER_RUNTIME["server"] = server
+        _SERVER_RUNTIME["thread"] = thread
+
+        if not _wait_for_server(APP_HOST, port):
+            raise RuntimeError(f"Server did not start on {APP_HOST}:{port}")
+
+        _log(f"Loading desktop window {url}")
+        window.load_url(url)
+    except Exception as exc:
+        _log(traceback.format_exc())
+        window.load_html(_startup_error_html(str(exc)))
+
+
+def _open_desktop_window(preferred_port: int) -> None:
     import webview
 
     icon_path = RUNTIME_DIR / "assets" / "app-icon.ico"
     storage_path = RUNTIME_DIR / "webview-data"
-    webview.create_window(
+    window = webview.create_window(
         APP_NAME,
-        url,
+        html=_loading_html(),
         width=1280,
         height=820,
         min_size=(1080, 720),
         text_select=True,
     )
     webview.start(
+        _start_server_and_load,
+        (window, preferred_port),
         debug=False,
         private_mode=False,
         storage_path=str(storage_path),
@@ -118,31 +286,20 @@ def _open_desktop_window(url: str) -> None:
 
 def run_app() -> None:
     """Start the FastAPI backend and open a native desktop window."""
-    server = None
-    thread = None
     try:
         _log(f"Starting {APP_NAME}; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
         _prepare_environment()
 
-        from src.app import app
         from src.infrastructure.config.settings import settings
 
-        port = settings.server_port
-        url = f"http://{APP_HOST}:{port}"
-        if _is_port_open(APP_HOST, port):
-            _log(f"Using existing server at {url}")
-        else:
-            _log(f"Starting embedded server at {url}")
-            server, thread = _start_embedded_server(app, port)
-            if not _wait_for_server(APP_HOST, port):
-                raise RuntimeError(f"Server did not start on {APP_HOST}:{port}")
-
-        _log(f"Opening desktop window {url}")
-        _open_desktop_window(url)
+        _log("Opening desktop window with startup loading screen")
+        _open_desktop_window(settings.server_port)
     except Exception:
         _log(traceback.format_exc())
         raise
     finally:
+        server = _SERVER_RUNTIME.get("server")
+        thread = _SERVER_RUNTIME.get("thread")
         if server is not None:
             server.should_exit = True
         if thread is not None:
