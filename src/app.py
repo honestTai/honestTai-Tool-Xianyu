@@ -17,6 +17,7 @@ from src.api.routes import (
     login_state,
     websocket,
     accounts,
+    seller,
 )
 from src.api.dependencies import (
     set_process_service,
@@ -96,8 +97,8 @@ async def lifespan(app: FastAPI):
 
 # 创建 FastAPI 应用
 app = FastAPI(
-    title="闲鱼智能监控机器人",
-    description="基于AI的闲鱼商品监控系统",
+    title="honestTai-Tool-Xianyu",
+    description="闲鱼扫货、客服与商品上架工具",
     version="2.0.0",
     lifespan=lifespan
 )
@@ -112,6 +113,7 @@ app.include_router(results.router)
 app.include_router(login_state.router)
 app.include_router(websocket.router)
 app.include_router(accounts.router)
+app.include_router(seller.router)
 
 # 挂载静态文件
 # 旧的静态文件目录（用于截图等）

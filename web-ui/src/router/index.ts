@@ -35,6 +35,18 @@ const routes = [
         meta: { titleKey: 'routes.accounts', requiresAuth: true },
       },
       {
+        path: 'customer-service',
+        name: 'CustomerService',
+        component: () => import('@/views/CustomerServiceView.vue'),
+        meta: { titleKey: 'routes.customerService', requiresAuth: true },
+      },
+      {
+        path: 'listings/publish',
+        name: 'ListingPublish',
+        component: () => import('@/views/ListingPublishView.vue'),
+        meta: { titleKey: 'routes.listingPublish', requiresAuth: true },
+      },
+      {
         path: 'results',
         name: 'Results',
         component: () => import('@/views/ResultsView.vue'),

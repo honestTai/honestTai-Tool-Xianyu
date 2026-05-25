@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import DashboardTaskSearch from '@/components/layout/DashboardTaskSearch.vue'
 import LocaleToggle from '@/components/layout/LocaleToggle.vue'
 import { 
-  Zap, 
   Bell, 
   Search, 
   UserCircle,
@@ -39,19 +38,15 @@ function goPrompts() {
 
 <template>
   <header class="flex items-center justify-between px-6 h-16 bg-white/60 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-[100]">
-    <!-- Brand Logo -->
     <RouterLink
       to="/dashboard"
-      class="flex items-center gap-2 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      class="flex items-center gap-3 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       :aria-label="t('header.goHome')"
     >
-      <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:rotate-12">
-        <Zap class="w-5 h-5 text-white fill-white" />
-      </div>
-      <h1 class="text-lg font-black text-slate-800 tracking-tighter">
-        AI <span class="text-primary">Xianyu</span> Hunter
+      <h1 class="text-base sm:text-lg font-black text-slate-800">
+        honestTai-Tool-Xianyu
       </h1>
-      <Badge variant="outline" class="ml-2 text-[10px] font-bold border-primary/20 text-primary bg-primary/5 uppercase tracking-widest hidden sm:flex">
+      <Badge variant="outline" class="text-[10px] font-bold border-primary/20 text-primary bg-primary/5 uppercase tracking-widest hidden sm:flex">
         PRO
       </Badge>
     </RouterLink>
@@ -114,7 +109,7 @@ function goPrompts() {
            <UserCircle class="w-6 h-6 text-slate-500" />
         </div>
         <div class="text-left hidden lg:block">
-           <p class="text-xs font-black text-slate-700 leading-none mb-0.5">Xianyu Admin</p>
+           <p class="text-xs font-black text-slate-700 leading-none mb-0.5">honestTai</p>
            <p class="text-[10px] text-slate-400 font-medium">{{ t('header.accountManagement') }}</p>
         </div>
       </Button>

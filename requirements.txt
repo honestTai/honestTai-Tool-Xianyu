@@ -16,3 +16,6 @@ qrcode
 pytest
 pytest-asyncio
 coverage
+python-multipart
+pyinstaller
+goofish-cli @ git+https://github.com/fancyboi999/goofish-cli.git@main

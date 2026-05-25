@@ -87,6 +87,18 @@ class NotificationSettings(_EnvSettings):
         ])
 
 
+class BuyerAgentSettings(_EnvSettings):
+    """买家侧扫货命中后的二开动作配置"""
+    enabled: bool = _env_field(False, "BUYER_AGENT_ENABLED")
+    webhook_url: Optional[str] = _env_field(None, "BUYER_AGENT_WEBHOOK_URL")
+    webhook_headers: Optional[str] = _env_field(None, "BUYER_AGENT_WEBHOOK_HEADERS")
+    webhook_timeout_seconds: float = _env_field(
+        10.0,
+        "BUYER_AGENT_WEBHOOK_TIMEOUT_SECONDS",
+        ge=0.1,
+    )
+
+
 class ScraperSettings(_EnvSettings):
     """爬虫相关配置"""
     run_headless: bool = _env_field(True, "RUN_HEADLESS")
@@ -126,7 +138,7 @@ def get_settings() -> AppSettings:
 
 def reload_settings() -> None:
     """重新加载全局配置实例"""
-    global _settings_instance, settings, ai_settings, notification_settings, scraper_settings
+    global _settings_instance, settings, ai_settings, notification_settings, buyer_agent_settings, scraper_settings
     from dotenv import load_dotenv
     from src.infrastructure.config.env_manager import env_manager
 
@@ -135,6 +147,7 @@ def reload_settings() -> None:
     settings = get_settings()
     ai_settings = AISettings()
     notification_settings = NotificationSettings()
+    buyer_agent_settings = BuyerAgentSettings()
     scraper_settings = ScraperSettings()
 
 
@@ -142,4 +155,5 @@ def reload_settings() -> None:
 settings = get_settings()
 ai_settings = AISettings()
 notification_settings = NotificationSettings()
+buyer_agent_settings = BuyerAgentSettings()
 scraper_settings = ScraperSettings()

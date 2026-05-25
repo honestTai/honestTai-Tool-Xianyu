@@ -46,6 +46,7 @@ from src.rotation import RotationPool, load_state_files, parse_proxy_pool, Rotat
 from src.failure_guard import FailureGuard
 from src.services.account_strategy_service import resolve_account_runtime_plan
 from src.infrastructure.persistence.storage_names import build_result_filename
+from src.services.buyer_action_service import build_buyer_action_service
 from src.services.item_analysis_dispatcher import (
     ItemAnalysisDispatcher,
     ItemAnalysisJob,
@@ -594,6 +595,7 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
             seller_profile_cache = SellerProfileCache(
                 ttl_seconds=_get_seller_profile_cache_ttl(task_config)
             )
+            buyer_action_service = build_buyer_action_service()
             analysis_dispatcher = ItemAnalysisDispatcher(
                 concurrency=_get_ai_analysis_concurrency(task_config),
                 skip_ai_analysis=SKIP_AI_ANALYSIS,
@@ -605,6 +607,7 @@ async def scrape_xianyu(task_config: dict, debug_limit: int = 0):
                 ai_analyzer=get_ai_analysis,
                 notifier=send_ntfy_notification,
                 saver=save_to_jsonl,
+                buyer_action_handler=buyer_action_service.handle_recommended_item,
             )
 
             # 增强反检测脚本（模拟真实移动设备）

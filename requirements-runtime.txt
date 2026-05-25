@@ -13,3 +13,5 @@ httpx[socks]
 Pillow
 pyzbar
 qrcode
+python-multipart
+goofish-cli @ git+https://github.com/fancyboi999/goofish-cli.git@main

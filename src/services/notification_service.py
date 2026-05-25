@@ -40,7 +40,7 @@ class NotificationService:
 
     async def send_test_notification(self) -> Dict[str, Dict[str, str | bool]]:
         test_product = {
-            "商品标题": "[测试通知] 闲鱼智能监控",
+            "商品标题": "[测试通知] honestTai-Tool-Xianyu",
             "当前售价": "0",
             "商品链接": "https://www.goofish.com/",
         }

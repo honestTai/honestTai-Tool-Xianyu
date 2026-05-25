@@ -2,7 +2,7 @@ import enUSExtra from '@/i18n/messages/en-US-extra'
 
 const enUS = {
   app: {
-    name: 'Goofish Monitor',
+    name: 'honestTai-Tool-Xianyu',
   },
   locale: {
     switchLabel: 'Switch language',
@@ -14,6 +14,8 @@ const enUS = {
     dashboard: 'Dashboard',
     tasks: 'Tasks',
     accounts: 'Accounts',
+    customerService: 'Customer Service',
+    listingPublish: 'Publish Item',
     results: 'Results',
     logs: 'Logs',
     settings: 'Settings',
@@ -70,6 +72,8 @@ const enUS = {
     dashboard: 'Dashboard',
     tasks: 'Tasks',
     accounts: 'Accounts',
+    customerService: 'Customer Service',
+    listingPublish: 'Publish Item',
     results: 'Results',
     logs: 'Logs',
     settings: 'Settings',

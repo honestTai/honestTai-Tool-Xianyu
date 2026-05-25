@@ -14,8 +14,30 @@ import requests
 # 设置标准输出编码为UTF-8，解决Windows控制台编码问题
 if sys.platform.startswith('win'):
     import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+
+    def _wrap_utf8_console_stream(stream):
+        if stream is None:
+            return stream
+        if hasattr(stream, 'reconfigure'):
+            try:
+                stream.reconfigure(encoding='utf-8')
+                return stream
+            except (AttributeError, ValueError, OSError):
+                pass
+        if not hasattr(stream, 'detach'):
+            return stream
+        try:
+            if hasattr(stream, 'isatty') and not stream.isatty():
+                return stream
+        except (AttributeError, ValueError, OSError):
+            return stream
+        try:
+            return codecs.getwriter('utf-8')(stream.detach())
+        except (AttributeError, ValueError, OSError):
+            return stream
+
+    sys.stdout = _wrap_utf8_console_stream(sys.stdout)
+    sys.stderr = _wrap_utf8_console_stream(sys.stderr)
 
 from src.config import (
     AI_DEBUG_MODE,

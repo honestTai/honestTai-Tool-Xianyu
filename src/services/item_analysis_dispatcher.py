@@ -16,6 +16,7 @@ ImageDownloader = Callable[[str, list[str], str], Awaitable[list[str]]]
 AIAnalyzer = Callable[[dict, list[str], str], Awaitable[Optional[dict]]]
 Notifier = Callable[[dict, str], Awaitable[None]]
 Saver = Callable[[dict, str], Awaitable[bool]]
+BuyerActionHandler = Callable[[dict, str], Awaitable[None]]
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,7 @@ class ItemAnalysisDispatcher:
         ai_analyzer: AIAnalyzer,
         notifier: Notifier,
         saver: Saver,
+        buyer_action_handler: BuyerActionHandler | None = None,
     ) -> None:
         self._semaphore = asyncio.Semaphore(max(1, concurrency))
         self._skip_ai_analysis = skip_ai_analysis
@@ -53,6 +55,7 @@ class ItemAnalysisDispatcher:
         self._ai_analyzer = ai_analyzer
         self._notifier = notifier
         self._saver = saver
+        self._buyer_action_handler = buyer_action_handler
         self._tasks: set[asyncio.Task] = set()
         self.completed_count = 0
 
@@ -76,6 +79,7 @@ class ItemAnalysisDispatcher:
         record["ai_analysis"] = await self._build_analysis_result(job, record)
         if await self._saver(record, job.keyword):
             self.completed_count += 1
+        await self._run_buyer_action_if_recommended(record, job.keyword)
         await self._notify_if_recommended(item_data, record["ai_analysis"])
 
     async def _load_seller_info(self, job: ItemAnalysisJob) -> dict:
@@ -171,3 +175,14 @@ class ItemAnalysisDispatcher:
             await self._notifier(item_data, analysis_result.get("reason", "无"))
         except Exception as exc:
             print(f"   [通知] 发送推荐通知失败: {exc}")
+
+    async def _run_buyer_action_if_recommended(self, record: dict, keyword: str) -> None:
+        if self._buyer_action_handler is None:
+            return
+        analysis_result = record.get("ai_analysis", {}) or {}
+        if not analysis_result.get("is_recommended"):
+            return
+        try:
+            await self._buyer_action_handler(record, keyword)
+        except Exception as exc:
+            print(f"   [BuyerAgent] 推荐商品动作执行失败: {exc}")

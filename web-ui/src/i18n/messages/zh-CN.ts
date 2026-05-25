@@ -2,7 +2,7 @@ import zhCNExtra from '@/i18n/messages/zh-CN-extra'
 
 const zhCN = {
   app: {
-    name: '闲鱼智能监控',
+    name: 'honestTai-Tool-Xianyu',
   },
   locale: {
     switchLabel: '切换语言',
@@ -14,6 +14,8 @@ const zhCN = {
     dashboard: '监控概览',
     tasks: '任务管理',
     accounts: '账号管理',
+    customerService: '客服工作台',
+    listingPublish: '商品上架',
     results: '结果查看',
     logs: '运行日志',
     settings: '系统设置',
@@ -70,6 +72,8 @@ const zhCN = {
     dashboard: '监控概览',
     tasks: '任务管理',
     accounts: '账号管理',
+    customerService: '客服工作台',
+    listingPublish: '商品上架',
     results: '结果查看',
     logs: '运行日志',
     settings: '系统设置',
