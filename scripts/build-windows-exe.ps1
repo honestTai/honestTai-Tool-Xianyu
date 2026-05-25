@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $Name = "honestTai-Tool-Xianyu"
+$Icon = Join-Path $Root "assets\app-icon.ico"
 
 Set-Location $Root
 
@@ -36,12 +37,19 @@ Write-Host "Building $Name.exe..."
   --onedir `
   --distpath "release" `
   --workpath "build" `
+  --icon $Icon `
   @modeArgs `
   --add-data "dist;dist" `
   --add-data "static;static" `
+  --add-data "assets;assets" `
   --add-data ".env.example;." `
+  --collect-data webview `
+  --collect-submodules webview `
   --collect-data goofish_cli `
   --collect-submodules goofish_cli `
+  --hidden-import clr `
+  --hidden-import clr_loader `
+  --hidden-import pythonnet `
   --hidden-import win32timezone `
   desktop_launcher.py
 
