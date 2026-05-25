@@ -1,7 +1,9 @@
+"""Executable launcher for the local web app.
+
+The packaged exe starts the FastAPI backend and opens the user's default
+browser. Spider workers reuse this same exe with ``--run-spider``.
 """
-桌面启动入口
-使用 PyInstaller 打包后作为单一可执行文件的入口，自动启动 FastAPI 服务并打开浏览器。
-"""
+
 import os
 import shutil
 import socket
@@ -9,13 +11,14 @@ import sys
 import threading
 import time
 import traceback
-import base64
+import urllib.request
+import webbrowser
 from pathlib import Path
 
 APP_NAME = "honestTai-Tool-Xianyu"
 APP_HOST = "127.0.0.1"
 INSTANCE_CONTROL_PORT = 47681
-INSTANCE_CONTROL_ACK = b"honesttai-focus-ok\n"
+INSTANCE_URL_PREFIX = "honesttai-url "
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 RUNTIME_DIR = (
     Path(sys.executable).resolve().parent
@@ -47,15 +50,6 @@ def _log(message: str) -> None:
         pass
 
 
-def _show_message(title: str, message: str) -> None:
-    try:
-        import ctypes
-
-        ctypes.windll.user32.MessageBoxW(None, message, title, 0x40)
-    except Exception:
-        _log(f"{title}: {message}")
-
-
 def _ensure_standard_streams() -> None:
     for stream_name in ("stdout", "stderr"):
         if getattr(sys, stream_name) is None:
@@ -65,7 +59,6 @@ def _ensure_standard_streams() -> None:
 
 
 def _prepare_environment() -> None:
-    """确保工作目录和模块路径正确"""
     _ensure_standard_streams()
     for asset in ("dist", "static", "assets", ".env.example"):
         _sync_runtime_asset(asset)
@@ -83,10 +76,22 @@ def _is_port_open(host: str, port: int) -> bool:
         return False
 
 
-def _wait_for_server(host: str, port: int, timeout_seconds: float = 30.0) -> bool:
+def _health_url(url: str) -> str:
+    return f"{url.rstrip('/')}/health"
+
+
+def _is_app_healthy(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(_health_url(url), timeout=1.0) as response:
+            return 200 <= response.status < 300
+    except Exception:
+        return False
+
+
+def _wait_for_app(url: str, timeout_seconds: float = 30.0) -> bool:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        if _is_port_open(host, port):
+        if _is_app_healthy(url):
             return True
         time.sleep(0.2)
     return False
@@ -99,14 +104,29 @@ def _find_available_port(preferred_port: int) -> int:
     raise RuntimeError(f"No free local port found near {preferred_port}")
 
 
-def _connect_to_existing_instance() -> bool:
+def _connect_to_existing_instance() -> str | None:
     try:
         with socket.create_connection((APP_HOST, INSTANCE_CONTROL_PORT), timeout=0.5) as client:
-            client.sendall(b"focus\n")
-            client.settimeout(0.8)
-            return client.recv(64) == INSTANCE_CONTROL_ACK
+            client.sendall(b"url\n")
+            client.settimeout(1.0)
+            payload = client.recv(256).decode("utf-8", errors="ignore").strip()
     except OSError:
-        return False
+        return None
+
+    if payload.startswith(INSTANCE_URL_PREFIX):
+        url = payload[len(INSTANCE_URL_PREFIX):].strip()
+        return url or None
+    return None
+
+
+def _wait_for_existing_instance_url(timeout_seconds: float = 10.0) -> str | None:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        url = _connect_to_existing_instance()
+        if url:
+            return url
+        time.sleep(0.25)
+    return None
 
 
 def _acquire_instance_control_socket() -> socket.socket | None:
@@ -125,45 +145,13 @@ def _acquire_instance_control_socket() -> socket.socket | None:
         return None
 
 
-def _focus_window(window) -> None:
-    try:
-        bring_to_front = getattr(window, "bring_to_front", None)
-        if callable(bring_to_front):
-            bring_to_front()
-    except Exception:
-        pass
-    try:
-        window.restore()
-    except Exception:
-        pass
-    try:
-        window.show()
-    except Exception:
-        pass
-    try:
-        window.evaluate_js(
-            """
-            (() => {
-              const el = document.body;
-              if (!el) return;
-              el.animate(
-                [
-                  { filter: 'brightness(1)' },
-                  { filter: 'brightness(1.08)' },
-                  { filter: 'brightness(1)' }
-                ],
-                { duration: 420, easing: 'ease-out' }
-              );
-            })();
-            """
-        )
-    except Exception:
-        pass
-
-
-def _start_instance_control_server(control_socket: socket.socket, window) -> threading.Thread:
+def _start_instance_control_server(
+    control_socket: socket.socket,
+    url: str,
+    ready_event: threading.Event,
+) -> threading.Thread:
     def run() -> None:
-        _log(f"Single-instance control listening on {APP_HOST}:{INSTANCE_CONTROL_PORT}")
+        _log(f"Browser launcher control listening on {APP_HOST}:{INSTANCE_CONTROL_PORT}")
         while True:
             try:
                 conn, _ = control_socket.accept()
@@ -177,15 +165,15 @@ def _start_instance_control_server(control_socket: socket.socket, window) -> thr
                     command = conn.recv(64).decode("utf-8", errors="ignore").strip()
                 except OSError:
                     command = ""
-                if command == "focus":
+                if command in {"url", "open", "focus"}:
+                    ready_event.wait(timeout=30)
                     try:
-                        conn.sendall(INSTANCE_CONTROL_ACK)
+                        conn.sendall(f"{INSTANCE_URL_PREFIX}{url}\n".encode("utf-8"))
                     except OSError:
                         pass
-                    _log("Received focus request from another launcher instance")
-                    _focus_window(window)
+                    _log("Shared browser URL with another launcher instance")
 
-    thread = threading.Thread(target=run, name="honesttai-single-instance", daemon=True)
+    thread = threading.Thread(target=run, name="honesttai-browser-instance", daemon=True)
     thread.start()
     return thread
 
@@ -206,206 +194,62 @@ def _start_embedded_server(app, port: int):
     return server, thread
 
 
-def _asset_data_uri(path: Path) -> str:
-    if not path.exists():
-        return ""
+def _open_browser(url: str) -> None:
+    _log(f"Opening browser {url}")
+    webbrowser.open(url, new=2)
+
+
+def _serve_until_stopped(thread: threading.Thread) -> None:
     try:
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        return f"data:image/png;base64,{encoded}"
-    except Exception:
-        return ""
+        while thread.is_alive():
+            thread.join(timeout=0.5)
+    except KeyboardInterrupt:
+        _log("Launcher interrupted by user")
 
 
-def _loading_html() -> str:
-    icon_uri = _asset_data_uri(RUNTIME_DIR / "assets" / "app-icon.png")
-    icon_html = f'<img src="{icon_uri}" alt="" />' if icon_uri else '<div class="fallback-icon"></div>'
-    return f"""<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-      color: #eaf2ff;
-      background:
-        radial-gradient(circle at 30% 20%, rgba(0, 209, 255, 0.28), transparent 28%),
-        radial-gradient(circle at 70% 76%, rgba(48, 235, 145, 0.22), transparent 30%),
-        linear-gradient(135deg, #06111f, #0b2346 52%, #07111f);
-    }}
-    .shell {{
-      width: min(520px, calc(100vw - 48px));
-      padding: 38px 34px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 26px;
-      background: rgba(8, 22, 43, 0.68);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.34);
-      text-align: center;
-      backdrop-filter: blur(18px);
-    }}
-    img, .fallback-icon {{
-      width: 92px;
-      height: 92px;
-      border-radius: 24px;
-      margin-bottom: 22px;
-      filter: drop-shadow(0 18px 32px rgba(0, 188, 255, 0.26));
-    }}
-    .fallback-icon {{
-      margin-inline: auto;
-      background: linear-gradient(135deg, #16d9ff, #2f7cff);
-    }}
-    h1 {{
-      margin: 0;
-      font-size: 26px;
-      letter-spacing: 0;
-      font-weight: 800;
-    }}
-    p {{
-      margin: 12px 0 0;
-      color: #aebfda;
-      font-size: 15px;
-    }}
-    .loader {{
-      height: 6px;
-      overflow: hidden;
-      margin-top: 30px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.12);
-    }}
-    .loader::before {{
-      content: "";
-      display: block;
-      width: 42%;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #27f1ff, #34e89e);
-      animation: sweep 1.15s ease-in-out infinite;
-    }}
-    @keyframes sweep {{
-      0% {{ transform: translateX(-110%); }}
-      100% {{ transform: translateX(260%); }}
-    }}
-  </style>
-</head>
-<body>
-  <main class="shell">
-    {icon_html}
-    <h1>honestTai-Tool-Xianyu</h1>
-    <p>正在启动本地服务，请稍等...</p>
-    <div class="loader" aria-hidden="true"></div>
-  </main>
-</body>
-</html>"""
-
-
-def _startup_error_html(message: str) -> str:
-    return f"""<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <style>
-    body {{
-      margin: 0;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-      color: #1f2937;
-      background: #f8fafc;
-    }}
-    main {{
-      max-width: 560px;
-      padding: 32px;
-      border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
-    }}
-    h1 {{ margin: 0 0 12px; font-size: 22px; }}
-    pre {{ white-space: pre-wrap; color: #ef4444; }}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>启动失败</h1>
-    <pre>{message}</pre>
-  </main>
-</body>
-</html>"""
-
-
-def _start_server_and_load(window, preferred_port: int) -> None:
+def run_app() -> None:
+    """Start the FastAPI backend and open the default browser."""
     try:
-        from src.app import app
+        _log(f"Starting {APP_NAME}; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
+        _prepare_environment()
 
-        port = _find_available_port(preferred_port)
+        existing_url = _connect_to_existing_instance()
+        if existing_url:
+            _open_browser(existing_url)
+            return
+
+        control_socket = _acquire_instance_control_socket()
+        if control_socket is None:
+            existing_url = _wait_for_existing_instance_url()
+            if existing_url:
+                _open_browser(existing_url)
+                return
+            raise RuntimeError("Another launcher instance is starting, but did not share a URL.")
+        _SERVER_RUNTIME["control_socket"] = control_socket
+
+        from src.infrastructure.config.settings import settings
+
+        port = _find_available_port(settings.server_port)
         url = f"http://{APP_HOST}:{port}"
-        if port != preferred_port:
-            _log(f"Configured port {preferred_port} is busy, using {port}")
+        if port != settings.server_port:
+            _log(f"Configured port {settings.server_port} is busy, using {port}")
+
+        ready_event = threading.Event()
+        _start_instance_control_server(control_socket, url, ready_event)
+
+        from src.app import app
 
         _log(f"Starting embedded server at {url}")
         server, thread = _start_embedded_server(app, port)
         _SERVER_RUNTIME["server"] = server
         _SERVER_RUNTIME["thread"] = thread
 
-        if not _wait_for_server(APP_HOST, port):
-            raise RuntimeError(f"Server did not start on {APP_HOST}:{port}")
+        if not _wait_for_app(url):
+            raise RuntimeError(f"Server did not become healthy at {_health_url(url)}")
 
-        _log(f"Loading desktop window {url}")
-        window.load_url(url)
-    except Exception as exc:
-        _log(traceback.format_exc())
-        window.load_html(_startup_error_html(str(exc)))
-
-
-def _open_desktop_window(preferred_port: int) -> None:
-    import webview
-
-    control_socket = _acquire_instance_control_socket()
-    if control_socket is None:
-        if _connect_to_existing_instance():
-            _show_message(APP_NAME, "程序已经在运行，已尝试切回现有窗口。")
-        else:
-            _show_message(APP_NAME, "程序已经在运行，或单实例端口被占用。请先关闭已有窗口后再启动。")
-        return
-    _SERVER_RUNTIME["control_socket"] = control_socket
-
-    icon_path = RUNTIME_DIR / "assets" / "app-icon.ico"
-    storage_path = RUNTIME_DIR / "webview-data"
-    window = webview.create_window(
-        APP_NAME,
-        html=_loading_html(),
-        width=1280,
-        height=820,
-        min_size=(1080, 720),
-        text_select=True,
-    )
-    _start_instance_control_server(control_socket, window)
-    webview.start(
-        _start_server_and_load,
-        (window, preferred_port),
-        debug=False,
-        private_mode=False,
-        storage_path=str(storage_path),
-        icon=str(icon_path) if icon_path.exists() else None,
-    )
-
-
-def run_app() -> None:
-    """Start the FastAPI backend and open a native desktop window."""
-    try:
-        _log(f"Starting {APP_NAME}; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
-        _prepare_environment()
-
-        from src.infrastructure.config.settings import settings
-
-        _log("Opening desktop window with startup loading screen")
-        _open_desktop_window(settings.server_port)
+        ready_event.set()
+        _open_browser(url)
+        _serve_until_stopped(thread)
     except Exception:
         _log(traceback.format_exc())
         raise
