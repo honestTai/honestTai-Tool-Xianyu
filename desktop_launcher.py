@@ -14,6 +14,8 @@ from pathlib import Path
 
 APP_NAME = "honestTai-Tool-Xianyu"
 APP_HOST = "127.0.0.1"
+INSTANCE_CONTROL_PORT = 47681
+INSTANCE_CONTROL_ACK = b"honesttai-focus-ok\n"
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 RUNTIME_DIR = (
     Path(sys.executable).resolve().parent
@@ -21,7 +23,7 @@ RUNTIME_DIR = (
     else Path(__file__).resolve().parent
 )
 _DEVNULL_STREAMS = []
-_SERVER_RUNTIME = {"server": None, "thread": None}
+_SERVER_RUNTIME = {"server": None, "thread": None, "control_socket": None}
 
 
 def _sync_runtime_asset(name: str) -> None:
@@ -43,6 +45,15 @@ def _log(message: str) -> None:
             handle.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
     except Exception:
         pass
+
+
+def _show_message(title: str, message: str) -> None:
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(None, message, title, 0x40)
+    except Exception:
+        _log(f"{title}: {message}")
 
 
 def _ensure_standard_streams() -> None:
@@ -86,6 +97,97 @@ def _find_available_port(preferred_port: int) -> int:
         if not _is_port_open(APP_HOST, port):
             return port
     raise RuntimeError(f"No free local port found near {preferred_port}")
+
+
+def _connect_to_existing_instance() -> bool:
+    try:
+        with socket.create_connection((APP_HOST, INSTANCE_CONTROL_PORT), timeout=0.5) as client:
+            client.sendall(b"focus\n")
+            client.settimeout(0.8)
+            return client.recv(64) == INSTANCE_CONTROL_ACK
+    except OSError:
+        return False
+
+
+def _acquire_instance_control_socket() -> socket.socket | None:
+    control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            control_socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        else:
+            control_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        control_socket.bind((APP_HOST, INSTANCE_CONTROL_PORT))
+        control_socket.listen(5)
+        control_socket.settimeout(0.5)
+        return control_socket
+    except OSError:
+        control_socket.close()
+        return None
+
+
+def _focus_window(window) -> None:
+    try:
+        bring_to_front = getattr(window, "bring_to_front", None)
+        if callable(bring_to_front):
+            bring_to_front()
+    except Exception:
+        pass
+    try:
+        window.restore()
+    except Exception:
+        pass
+    try:
+        window.show()
+    except Exception:
+        pass
+    try:
+        window.evaluate_js(
+            """
+            (() => {
+              const el = document.body;
+              if (!el) return;
+              el.animate(
+                [
+                  { filter: 'brightness(1)' },
+                  { filter: 'brightness(1.08)' },
+                  { filter: 'brightness(1)' }
+                ],
+                { duration: 420, easing: 'ease-out' }
+              );
+            })();
+            """
+        )
+    except Exception:
+        pass
+
+
+def _start_instance_control_server(control_socket: socket.socket, window) -> threading.Thread:
+    def run() -> None:
+        _log(f"Single-instance control listening on {APP_HOST}:{INSTANCE_CONTROL_PORT}")
+        while True:
+            try:
+                conn, _ = control_socket.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+            with conn:
+                try:
+                    command = conn.recv(64).decode("utf-8", errors="ignore").strip()
+                except OSError:
+                    command = ""
+                if command == "focus":
+                    try:
+                        conn.sendall(INSTANCE_CONTROL_ACK)
+                    except OSError:
+                        pass
+                    _log("Received focus request from another launcher instance")
+                    _focus_window(window)
+
+    thread = threading.Thread(target=run, name="honesttai-single-instance", daemon=True)
+    thread.start()
+    return thread
 
 
 def _start_embedded_server(app, port: int):
@@ -264,6 +366,15 @@ def _start_server_and_load(window, preferred_port: int) -> None:
 def _open_desktop_window(preferred_port: int) -> None:
     import webview
 
+    control_socket = _acquire_instance_control_socket()
+    if control_socket is None:
+        if _connect_to_existing_instance():
+            _show_message(APP_NAME, "程序已经在运行，已尝试切回现有窗口。")
+        else:
+            _show_message(APP_NAME, "程序已经在运行，或单实例端口被占用。请先关闭已有窗口后再启动。")
+        return
+    _SERVER_RUNTIME["control_socket"] = control_socket
+
     icon_path = RUNTIME_DIR / "assets" / "app-icon.ico"
     storage_path = RUNTIME_DIR / "webview-data"
     window = webview.create_window(
@@ -274,6 +385,7 @@ def _open_desktop_window(preferred_port: int) -> None:
         min_size=(1080, 720),
         text_select=True,
     )
+    _start_instance_control_server(control_socket, window)
     webview.start(
         _start_server_and_load,
         (window, preferred_port),
@@ -300,10 +412,16 @@ def run_app() -> None:
     finally:
         server = _SERVER_RUNTIME.get("server")
         thread = _SERVER_RUNTIME.get("thread")
+        control_socket = _SERVER_RUNTIME.get("control_socket")
         if server is not None:
             server.should_exit = True
         if thread is not None:
             thread.join(timeout=5)
+        if control_socket is not None:
+            try:
+                control_socket.close()
+            except OSError:
+                pass
 
 
 def run_spider() -> None:
