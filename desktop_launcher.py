@@ -10,8 +10,6 @@ import traceback
 import webbrowser
 from pathlib import Path
 
-import uvicorn
-
 APP_NAME = "honestTai-Tool-Xianyu"
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 RUNTIME_DIR = (
@@ -70,6 +68,7 @@ def run_app() -> None:
 
         from src.app import app
         from src.infrastructure.config.settings import settings
+        import uvicorn
 
         url = f"http://127.0.0.1:{settings.server_port}"
         _log(f"Opening {url}")
@@ -88,5 +87,27 @@ def run_app() -> None:
         raise
 
 
+def run_spider() -> None:
+    try:
+        _log(f"Starting spider worker; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
+        _prepare_environment()
+
+        args = sys.argv[1:]
+        if args and args[0] == "--run-spider":
+            args = args[1:]
+        sys.argv = ["spider_v2.py", *args]
+
+        import asyncio
+        from spider_v2 import main as spider_main
+
+        asyncio.run(spider_main())
+    except Exception:
+        _log(traceback.format_exc())
+        raise
+
+
 if __name__ == "__main__":
-    run_app()
+    if "--run-spider" in sys.argv:
+        run_spider()
+    else:
+        run_app()

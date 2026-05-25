@@ -87,13 +87,21 @@ class ProcessService:
         return log_file_path, log_file_handle
 
     def _build_spawn_command(self, task_name: str) -> list[str]:
-        command = [
-            sys.executable,
-            "-u",
-            "spider_v2.py",
-            "--task-name",
-            task_name,
-        ]
+        if getattr(sys, "frozen", False):
+            command = [
+                sys.executable,
+                "--run-spider",
+                "--task-name",
+                task_name,
+            ]
+        else:
+            command = [
+                sys.executable,
+                "-u",
+                "spider_v2.py",
+                "--task-name",
+                task_name,
+            ]
         debug_limit = str(os.getenv(SPIDER_DEBUG_LIMIT_ENV, "")).strip()
         if debug_limit.isdigit() and int(debug_limit) > 0:
             command.extend(["--debug-limit", debug_limit])
