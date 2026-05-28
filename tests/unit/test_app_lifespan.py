@@ -1,5 +1,7 @@
 import asyncio
 
+from fastapi.responses import JSONResponse
+
 import src.app as app_module
 
 
@@ -66,3 +68,47 @@ def test_lifespan_cleans_task_logs_on_startup(monkeypatch):
     assert called["keep_days"] == 9
     assert fake_scheduler.stopped is True
     assert fake_process.stop_all_called is True
+
+
+class _FakeUrl:
+    def __init__(self, path):
+        self.path = path
+
+
+class _FakeRequest:
+    def __init__(self, path):
+        self.url = _FakeUrl(path)
+
+
+class _FakeLicenseStatus:
+    authorized = False
+    code = "LICENSE_DISABLED"
+    message = "授权码已被禁用"
+
+
+class _FakeLicenseManager:
+    def __init__(self):
+        self.refresh_calls = []
+
+    def is_enabled(self):
+        return True
+
+    def refresh_authorization(self, *, force=False):
+        self.refresh_calls.append(force)
+        return _FakeLicenseStatus()
+
+    def get_status(self):
+        return _FakeLicenseStatus()
+
+
+def test_enforce_license_force_refreshes_protected_api(monkeypatch):
+    fake_license = _FakeLicenseManager()
+    monkeypatch.setattr(app_module, "license_manager", fake_license)
+
+    async def call_next(_request):
+        return JSONResponse({"ok": True})
+
+    response = asyncio.run(app_module.enforce_license(_FakeRequest("/api/tasks"), call_next))
+
+    assert fake_license.refresh_calls == [True]
+    assert response.status_code == 403

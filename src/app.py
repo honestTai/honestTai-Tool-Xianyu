@@ -159,7 +159,7 @@ app = FastAPI(
 async def enforce_license(request: Request, call_next):
     path = request.url.path
     if license_manager.is_enabled() and _is_license_protected_path(path) and not _is_license_public_path(path):
-        license_manager.refresh_authorization()
+        license_manager.refresh_authorization(force=True)
     if (
         license_manager.is_enabled()
         and _is_license_protected_path(path)

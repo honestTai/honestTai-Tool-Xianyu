@@ -19,6 +19,9 @@ async def websocket_endpoint(
     websocket: WebSocket,
 ):
     """WebSocket 端点"""
+    if license_manager.is_enabled():
+        license_manager.refresh_authorization(force=True)
+
     if license_manager.is_enabled() and not license_manager.get_status().authorized:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
