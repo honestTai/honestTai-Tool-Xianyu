@@ -35,6 +35,7 @@ def _status_payload():
 
 @router.get("/status")
 async def license_status():
+    license_manager.refresh_authorization(force=True)
     return _status_payload()
 
 

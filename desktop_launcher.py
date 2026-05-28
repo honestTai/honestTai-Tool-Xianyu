@@ -60,7 +60,7 @@ def _ensure_standard_streams() -> None:
 
 def _prepare_environment() -> None:
     _ensure_standard_streams()
-    for asset in ("dist", "static", "assets", ".env.example"):
+    for asset in ("dist", "static", "assets", ".env", ".env.example"):
         _sync_runtime_asset(asset)
 
     os.chdir(RUNTIME_DIR)
@@ -212,14 +212,6 @@ def run_app() -> None:
     try:
         _log(f"Starting {APP_NAME}; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
         _prepare_environment()
-
-        from src.services.license_runtime import LicenseError, license_manager
-
-        try:
-            license_manager.ensure_startup_authorized(interactive=True)
-        except LicenseError as exc:
-            _log(f"License check failed: {exc.code} {exc.message}")
-            raise RuntimeError(f"授权校验失败: {exc.message}") from exc
 
         existing_url = _connect_to_existing_instance()
         if existing_url:

@@ -18,4 +18,5 @@ price_history/
 data/
 build/
 release/
+release-*/
 *.spec

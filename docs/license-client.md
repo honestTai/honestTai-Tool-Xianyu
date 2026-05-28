@@ -24,6 +24,18 @@ LICENSE_CLIENT_SECRET=honesttai-xianyu-license-client-v1
 
 源码开发时默认不启用授权；打包 exe 中默认启用授权。需要在源码模式强制测试授权时，显式设置 `LICENSE_ENFORCEMENT_ENABLED=true`。
 
+生产发布时不需要在源码里写死授权服务地址，推荐通过 Windows 打包脚本内置：
+
+```powershell
+.\scripts\build-windows-exe.ps1 -LicenseServerUrl "https://license.your-domain.com"
+```
+
+如果要给用户安装包而不是发布目录，使用：
+
+```powershell
+.\scripts\build-windows-installer.ps1 -LicenseServerUrl "https://license.your-domain.com"
+```
+
 本地授权缓存写入 exe 同目录：
 
 ```text

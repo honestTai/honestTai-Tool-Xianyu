@@ -106,11 +106,12 @@ async def lifespan(app: FastAPI):
     print("正在启动应用...")
     if license_manager.is_enabled():
         try:
-            license_manager.ensure_startup_authorized(interactive=False)
-            heartbeat_task = asyncio.create_task(_license_heartbeat_loop())
+            status = license_manager.ensure_startup_authorized(interactive=False)
+            if status.authorized:
+                heartbeat_task = asyncio.create_task(_license_heartbeat_loop())
         except LicenseError as exc:
             print(f"授权校验失败: {exc.code} {exc.message}")
-            raise
+            license_manager.mark_failed(exc)
 
     bootstrap_sqlite_storage()
     cleanup_task_logs(keep_days=app_settings.task_log_retention_days)
@@ -157,6 +158,8 @@ app = FastAPI(
 @app.middleware("http")
 async def enforce_license(request: Request, call_next):
     path = request.url.path
+    if license_manager.is_enabled() and _is_license_protected_path(path) and not _is_license_public_path(path):
+        license_manager.refresh_authorization()
     if (
         license_manager.is_enabled()
         and _is_license_protected_path(path)
@@ -186,6 +189,7 @@ app.include_router(seller.router)
 # 挂载静态文件
 # 旧的静态文件目录（用于截图等）
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/app-assets", StaticFiles(directory="assets"), name="app-assets")
 
 # 挂载 Vue 3 前端构建产物
 # 注意：需要在所有 API 路由之后挂载，以避免覆盖 API 路由

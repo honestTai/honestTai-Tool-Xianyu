@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from src.services.license_runtime import LicenseManager, build_device_fingerprint, sign_payload
+from src.services.license_runtime import LicenseError, LicenseManager, build_device_fingerprint, sign_payload
 
 
 def test_device_fingerprint_is_stable():
@@ -85,3 +85,27 @@ def test_activation_saves_server_response(tmp_path, monkeypatch):
     assert status.authorized is True
     assert status.device_id == "device-1"
     assert manager.load_cache()["serverSignature"] == "server-signature"
+
+
+def test_refresh_authorization_marks_remote_rejection_failed(tmp_path, monkeypatch):
+    monkeypatch.setenv("LICENSE_ENFORCEMENT_ENABLED", "true")
+    monkeypatch.setenv("LICENSE_CACHE_PATH", str(tmp_path / "license.dat"))
+    manager = LicenseManager()
+    manager.save_cache(
+        {
+            "licenseKey": "LIC-123",
+            "deviceId": "device-1",
+            "serverUrl": "https://license.example.com",
+        }
+    )
+
+    def fake_validate():
+        raise LicenseError("LICENSE_DISABLED", "授权码已被禁用")
+
+    monkeypatch.setattr(manager, "validate", fake_validate)
+
+    status = manager.refresh_authorization(force=True)
+
+    assert status.authorized is False
+    assert status.code == "LICENSE_DISABLED"
+    assert status.message == "授权码已被禁用"

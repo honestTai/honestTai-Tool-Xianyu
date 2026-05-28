@@ -144,6 +144,7 @@ def sign_payload(payload: dict[str, Any], secret: str) -> str:
 
 class LicenseManager:
     def __init__(self) -> None:
+        self._last_remote_check_at = 0.0
         self._status = LicenseStatus(
             enabled=self.is_enabled(),
             authorized=False,
@@ -168,6 +169,14 @@ class LicenseManager:
     def configured_server_url(self) -> str:
         _load_dotenv_once()
         return os.getenv("LICENSE_SERVER_URL", "").strip().rstrip("/")
+
+    @property
+    def validate_interval_seconds(self) -> int:
+        _load_dotenv_once()
+        try:
+            return max(0, int(os.getenv("LICENSE_VALIDATE_INTERVAL_SECONDS", "10")))
+        except ValueError:
+            return 10
 
     def is_enabled(self) -> bool:
         _load_dotenv_once()
@@ -342,6 +351,24 @@ class LicenseManager:
         self.save_cache(cache)
         self._mark_authorized(cache, "LICENSE_VALID", str(response.get("message") or "授权心跳正常"))
         return self._status
+
+    def refresh_authorization(self, *, force: bool = False) -> LicenseStatus:
+        if not self.is_enabled():
+            return self.get_status()
+        if not self.load_cache():
+            return self.get_status()
+
+        now = time.monotonic()
+        interval = self.validate_interval_seconds
+        if not force and self._last_remote_check_at and now - self._last_remote_check_at < interval:
+            return self.get_status()
+
+        self._last_remote_check_at = now
+        try:
+            return self.validate()
+        except LicenseError as exc:
+            self._mark_failed(exc)
+            return self.get_status()
 
     def ensure_startup_authorized(self, *, interactive: bool = False) -> LicenseStatus:
         if not self.is_enabled():
