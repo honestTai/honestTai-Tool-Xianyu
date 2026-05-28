@@ -47,6 +47,7 @@ Write-Host "Building $Name.exe..."
   --collect-submodules webview `
   --collect-data goofish_cli `
   --collect-submodules goofish_cli `
+  --paths "third_party\goofish-cli\src" `
   --hidden-import clr `
   --hidden-import clr_loader `
   --hidden-import pythonnet `

@@ -19,4 +19,4 @@ coverage
 python-multipart
 pyinstaller
 pywebview
-goofish-cli @ git+https://github.com/fancyboi999/goofish-cli.git@main
+./third_party/goofish-cli
