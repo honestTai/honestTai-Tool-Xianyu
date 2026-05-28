@@ -2,8 +2,10 @@
 WebSocket 路由
 提供实时通信功能
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from typing import Set
+
+from src.services.license_runtime import license_manager
 
 
 router = APIRouter()
@@ -17,6 +19,10 @@ async def websocket_endpoint(
     websocket: WebSocket,
 ):
     """WebSocket 端点"""
+    if license_manager.is_enabled() and not license_manager.get_status().authorized:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     # 接受连接
     await websocket.accept()
     active_connections.add(websocket)

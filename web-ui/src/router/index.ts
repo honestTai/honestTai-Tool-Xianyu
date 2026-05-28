@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useAuth } from '@/composables/useAuth'
 import { i18n, t } from '@/i18n'
+import { getLicenseStatus } from '@/api/license'
 
 const routes = [
   {
@@ -10,6 +11,12 @@ const routes = [
     name: 'Login',
     component: () => import('@/views/LoginView.vue'),
     meta: { titleKey: 'routes.login' },
+  },
+  {
+    path: '/license',
+    name: 'License',
+    component: () => import('@/views/LicenseActivationView.vue'),
+    meta: { titleKey: 'routes.license' },
   },
   {
     path: '/',
@@ -87,8 +94,21 @@ function updateDocumentTitle() {
   document.title = titleKey ? `${t(titleKey)} - ${appName}` : appName
 }
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const { isAuthenticated } = useAuth()
+
+  if (to.name !== 'License') {
+    try {
+      const license = await getLicenseStatus()
+      if (license.enabled && !license.authorized) {
+        next({ name: 'License', query: { redirect: to.fullPath } })
+        return
+      }
+    } catch {
+      next({ name: 'License', query: { redirect: to.fullPath } })
+      return
+    }
+  }
 
   if (to.meta.requiresAuth && !isAuthenticated.value) {
     next({ name: 'Login', query: { redirect: to.fullPath } })

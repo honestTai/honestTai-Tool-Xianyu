@@ -10,6 +10,7 @@ const zhCN = {
     en: 'English',
   },
   routes: {
+    license: '软件授权',
     login: '登录',
     dashboard: '监控概览',
     tasks: '任务管理',

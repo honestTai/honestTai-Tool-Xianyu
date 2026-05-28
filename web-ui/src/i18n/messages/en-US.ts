@@ -10,6 +10,7 @@ const enUS = {
     en: 'English',
   },
   routes: {
+    license: 'License',
     login: 'Login',
     dashboard: 'Dashboard',
     tasks: 'Tasks',

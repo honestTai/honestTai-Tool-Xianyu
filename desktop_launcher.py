@@ -213,6 +213,14 @@ def run_app() -> None:
         _log(f"Starting {APP_NAME}; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
         _prepare_environment()
 
+        from src.services.license_runtime import LicenseError, license_manager
+
+        try:
+            license_manager.ensure_startup_authorized(interactive=True)
+        except LicenseError as exc:
+            _log(f"License check failed: {exc.code} {exc.message}")
+            raise RuntimeError(f"授权校验失败: {exc.message}") from exc
+
         existing_url = _connect_to_existing_instance()
         if existing_url:
             _open_browser(existing_url)
@@ -272,6 +280,14 @@ def run_spider() -> None:
     try:
         _log(f"Starting spider worker; resource={RESOURCE_DIR}; runtime={RUNTIME_DIR}")
         _prepare_environment()
+
+        from src.services.license_runtime import LicenseError, license_manager
+
+        try:
+            license_manager.ensure_startup_authorized(interactive=False)
+        except LicenseError as exc:
+            _log(f"Spider license check failed: {exc.code} {exc.message}")
+            raise RuntimeError(f"授权校验失败: {exc.message}") from exc
 
         args = sys.argv[1:]
         if args and args[0] == "--run-spider":
