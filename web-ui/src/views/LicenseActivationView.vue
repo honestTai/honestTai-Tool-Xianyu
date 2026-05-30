@@ -1,33 +1,28 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import LocaleToggle from '@/components/layout/LocaleToggle.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { activateLicense, getLicenseStatus } from '@/api/license'
-import { ArrowRight, KeyRound, Server, ShieldCheck, X } from 'lucide-vue-next'
+import { ArrowRight, KeyRound, ShieldCheck, X } from 'lucide-vue-next'
 
-const router = useRouter()
 const route = useRoute()
 
-const serverUrl = ref('http://127.0.0.1:8090')
 const licenseKey = ref('')
 const isLoading = ref(false)
 const error = ref('')
 const statusMessage = ref('')
-const showServerField = ref(false)
 const appIconUrl = '/app-assets/app-icon.png'
 
 onMounted(async () => {
   try {
     const status = await getLicenseStatus()
-    serverUrl.value = status.serverUrl || serverUrl.value
     statusMessage.value = status.message || ''
-    showServerField.value = !status.serverUrl
     if (!status.enabled || status.authorized) {
-      router.replace((route.query.redirect as string) || '/login')
+      redirectToTarget()
     }
   } catch {
     statusMessage.value = '无法读取授权状态'
@@ -40,26 +35,21 @@ async function handleActivate() {
     return
   }
 
-  const normalizedServerUrl = normalizeServerUrl(serverUrl.value)
-  if (showServerField.value && !normalizedServerUrl) {
-    error.value = '请输入正确的授权服务器地址，例如 http://127.0.0.1:8090'
-    return
-  }
-
   isLoading.value = true
   error.value = ''
 
   try {
-    await activateLicense({
+    const status = await activateLicense({
       licenseKey: licenseKey.value.trim(),
-      serverUrl: normalizedServerUrl || undefined,
     })
-    router.replace((route.query.redirect as string) || '/login')
+    if (!status.enabled || status.authorized) {
+      redirectToTarget()
+      return
+    }
+    statusMessage.value = status.message || ''
+    error.value = '授权状态未生效，请稍后重试'
   } catch (e) {
     error.value = e instanceof Error ? e.message : '授权激活失败'
-    if (error.value.includes('授权服务器') || error.value.includes('LICENSE_SERVER')) {
-      showServerField.value = true
-    }
   } finally {
     isLoading.value = false
   }
@@ -70,10 +60,14 @@ function handleCancel() {
   error.value = ''
 }
 
-function normalizeServerUrl(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return ''
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`
+function redirectToTarget() {
+  const rawRedirect = Array.isArray(route.query.redirect)
+    ? route.query.redirect[0]
+    : route.query.redirect
+  const target = typeof rawRedirect === 'string' && rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+    ? rawRedirect
+    : '/dashboard'
+  window.location.replace(target)
 }
 </script>
 
@@ -136,21 +130,6 @@ function normalizeServerUrl(value: string) {
 
           <form @submit.prevent="handleActivate">
             <CardContent class="grid gap-5 px-0">
-              <div v-if="showServerField" class="grid gap-2">
-                <Label for="license-server" class="flex items-center gap-2 text-sm font-bold text-slate-700">
-                  <Server class="h-4 w-4 text-slate-400" />
-                  授权服务器
-                </Label>
-                <Input
-                  id="license-server"
-                  v-model="serverUrl"
-                  type="url"
-                  autocomplete="off"
-                  placeholder="https://license.example.com"
-                  class="h-12 rounded-xl bg-slate-50"
-                />
-              </div>
-
               <div class="grid gap-2">
                 <Label for="license-key" class="flex items-center gap-2 text-sm font-bold text-slate-700">
                   <KeyRound class="h-4 w-4 text-slate-400" />

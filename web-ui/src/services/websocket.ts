@@ -9,8 +9,8 @@ class WebSocketService {
 
   constructor() {
     // 延迟连接，等待认证完成
-    // 只有在已登录时才尝试连接
-    if (localStorage.getItem('auth_logged_in') === 'true') {
+    // 没有显式退出时按默认已登录处理
+    if (localStorage.getItem('auth_logged_in') !== 'false') {
       this.connect();
     }
   }
@@ -66,8 +66,8 @@ class WebSocketService {
         this.isConnected = false;
         this.emit('disconnected', { isConnected: false });
       }
-      // 只有在 shouldConnect 为 true 或已登录时才重连
-      if (this.shouldConnect || localStorage.getItem('auth_logged_in') === 'true') {
+      // 只有在 shouldConnect 为 true 或默认已登录时才重连
+      if (this.shouldConnect || localStorage.getItem('auth_logged_in') !== 'false') {
         setTimeout(() => this.connect(), this.reconnectInterval);
       }
     };

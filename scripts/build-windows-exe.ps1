@@ -1,7 +1,7 @@
 param(
   [string]$Python = "python",
   [string]$Npm = "npm",
-  [string]$LicenseServerUrl = $env:LICENSE_SERVER_URL,
+  [string]$LicenseServerUrl = "https://www.javatzt.cn/license",
   [string]$LicenseClientSecret = $env:LICENSE_CLIENT_SECRET,
   [string]$LicenseEnforcementEnabled = "true",
   [string]$DistPath = "release",
@@ -18,15 +18,17 @@ $ReleaseEnv = Join-Path $ReleaseEnvDir ".env"
 Set-Location $Root
 
 if ([string]::IsNullOrWhiteSpace($LicenseClientSecret)) {
-  $LicenseClientSecret = "honesttai-xianyu-license-client-v1"
+  $LicenseClientSecret = "change-this-client-secret"
 }
+
+$LicenseEnforcementEnabled = $LicenseEnforcementEnabled.Trim().ToLowerInvariant()
 
 if ($LicenseEnforcementEnabled -notin @("true", "false")) {
   throw "LicenseEnforcementEnabled must be true or false."
 }
 
-if ($LicenseEnforcementEnabled -eq "true" -and [string]::IsNullOrWhiteSpace($LicenseServerUrl)) {
-  Write-Warning "LICENSE_SERVER_URL is empty. The packaged app will ask for the license server address if activation is required."
+if ([string]::IsNullOrWhiteSpace($LicenseServerUrl)) {
+  $LicenseServerUrl = "https://www.javatzt.cn/license"
 }
 
 New-Item -ItemType Directory -Force -Path $ReleaseEnvDir | Out-Null

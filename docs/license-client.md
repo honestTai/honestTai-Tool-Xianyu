@@ -18,7 +18,7 @@ C:\Users\hones\Desktop\project\honestTai-License
 
 ```env
 LICENSE_ENFORCEMENT_ENABLED=true
-LICENSE_SERVER_URL=https://license.example.com
+LICENSE_SERVER_URL=https://www.javatzt.cn/license
 LICENSE_CLIENT_SECRET=honesttai-xianyu-license-client-v1
 ```
 
@@ -27,13 +27,13 @@ LICENSE_CLIENT_SECRET=honesttai-xianyu-license-client-v1
 生产发布时不需要在源码里写死授权服务地址，推荐通过 Windows 打包脚本内置：
 
 ```powershell
-.\scripts\build-windows-exe.ps1 -LicenseServerUrl "https://license.your-domain.com"
+.\scripts\build-windows-exe.ps1 -LicenseServerUrl "https://www.javatzt.cn/license"
 ```
 
 如果要给用户安装包而不是发布目录，使用：
 
 ```powershell
-.\scripts\build-windows-installer.ps1 -LicenseServerUrl "https://license.your-domain.com"
+.\scripts\build-windows-installer.ps1 -LicenseServerUrl "https://www.javatzt.cn/license"
 ```
 
 本地授权缓存写入 exe 同目录：

@@ -2,8 +2,8 @@ param(
   [string]$Python = "python",
   [string]$Npm = "npm",
   [string]$InnoSetupCompiler = "",
-  [string]$LicenseServerUrl = $env:LICENSE_SERVER_URL,
-  [string]$LicenseClientSecret = $env:LICENSE_CLIENT_SECRET,
+  [string]$LicenseServerUrl = "https://www.javatzt.cn/license",
+  [string]$LicenseClientSecret = "change-this-client-secret",
   [string]$LicenseEnforcementEnabled = "true",
   [switch]$Console,
   [switch]$SkipExeBuild
@@ -14,6 +14,8 @@ $Root = Split-Path -Parent $PSScriptRoot
 $Name = "honestTai-Tool-Xianyu"
 $BuildScript = Join-Path $PSScriptRoot "build-windows-exe.ps1"
 $InstallerScript = Join-Path $PSScriptRoot "installer\honesttai-tool-xianyu.iss"
+
+$LicenseEnforcementEnabled = $LicenseEnforcementEnabled.Trim().ToLowerInvariant()
 
 function Resolve-InnoSetupCompiler {
   param([string]$ConfiguredPath)
@@ -44,8 +46,8 @@ function Resolve-InnoSetupCompiler {
   throw "Inno Setup 6 was not found. Install it or pass -InnoSetupCompiler `"C:\Path\To\ISCC.exe`"."
 }
 
-if ($LicenseEnforcementEnabled -eq "true" -and [string]::IsNullOrWhiteSpace($LicenseServerUrl)) {
-  throw "Please pass -LicenseServerUrl or set LICENSE_SERVER_URL before building the installer."
+if ([string]::IsNullOrWhiteSpace($LicenseServerUrl)) {
+  $LicenseServerUrl = "https://www.javatzt.cn/license"
 }
 
 if (-not $SkipExeBuild) {

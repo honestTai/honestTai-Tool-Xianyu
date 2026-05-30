@@ -2,9 +2,14 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { wsService } from '@/services/websocket'
 
+const DEFAULT_AUTH_USERNAME = 'admin'
+
+localStorage.setItem('auth_username', localStorage.getItem('auth_username') || DEFAULT_AUTH_USERNAME)
+localStorage.setItem('auth_logged_in', 'true')
+
 // Global State
-const username = ref<string | null>(localStorage.getItem('auth_username'))
-const isLoggedIn = ref(localStorage.getItem('auth_logged_in') === 'true')
+const username = ref<string | null>(localStorage.getItem('auth_username') || DEFAULT_AUTH_USERNAME)
+const isLoggedIn = ref(true)
 
 export function useAuth() {
   const router = useRouter()

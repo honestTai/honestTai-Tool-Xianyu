@@ -70,6 +70,7 @@ def test_activation_saves_server_response(tmp_path, monkeypatch):
         assert server_url == "https://license.example.com"
         assert path == "/api/client/activate"
         assert payload["licenseKey"] == "LIC-123"
+        assert "appId" not in payload
         assert payload["signature"]
         return {
             "deviceId": "device-1",
@@ -85,6 +86,39 @@ def test_activation_saves_server_response(tmp_path, monkeypatch):
     assert status.authorized is True
     assert status.device_id == "device-1"
     assert manager.load_cache()["serverSignature"] == "server-signature"
+
+
+def test_cached_server_url_does_not_override_configured_server(tmp_path, monkeypatch):
+    monkeypatch.setenv("LICENSE_CACHE_PATH", str(tmp_path / "license.dat"))
+    monkeypatch.setenv("LICENSE_SERVER_URL", "https://license.example.com")
+    manager = LicenseManager()
+    manager.save_cache(
+        {
+            "licenseKey": "LIC-123",
+            "deviceId": "device-1",
+            "serverUrl": "http://localhost:8090",
+        }
+    )
+    captured = {}
+
+    def fake_request(server_url, path, payload):
+        captured["server_url"] = server_url
+        captured["path"] = path
+        return {
+            "deviceId": "device-1",
+            "expiresAt": "2026-12-31T00:00:00Z",
+            "heartbeatIntervalSeconds": 60,
+            "signature": "server-signature",
+        }
+
+    monkeypatch.setattr(manager, "_request", fake_request)
+
+    status = manager.validate()
+
+    assert captured["server_url"] == "https://license.example.com"
+    assert captured["path"] == "/api/client/validate"
+    assert status.server_url == "https://license.example.com"
+    assert manager.load_cache()["serverUrl"] == "https://license.example.com"
 
 
 def test_refresh_authorization_marks_remote_rejection_failed(tmp_path, monkeypatch):

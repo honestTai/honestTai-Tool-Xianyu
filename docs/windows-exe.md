@@ -12,7 +12,7 @@
 .\scripts\build-windows-exe.ps1 `
   -Python "C:\Path\To\python.exe" `
   -Npm "C:\Program Files\nodejs\npm.cmd" `
-  -LicenseServerUrl "https://license.your-domain.com" `
+  -LicenseServerUrl "https://www.javatzt.cn/license" `
   -LicenseClientSecret "honesttai-xianyu-license-client-v1"
 ```
 
@@ -48,7 +48,7 @@ exe 启动后会打开独立的 Windows 桌面窗口，窗口内容由本机内�
 .\scripts\build-windows-installer.ps1 `
   -Python "C:\Path\To\python.exe" `
   -Npm "C:\Program Files\nodejs\npm.cmd" `
-  -LicenseServerUrl "https://license.your-domain.com"
+  -LicenseServerUrl "https://www.javatzt.cn/license"
 ```
 
 输出位置：

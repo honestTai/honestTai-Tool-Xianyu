@@ -14,6 +14,7 @@ import traceback
 import urllib.request
 import webbrowser
 from pathlib import Path
+from urllib.parse import urljoin
 
 APP_NAME = "honestTai-Tool-Xianyu"
 APP_HOST = "127.0.0.1"
@@ -80,6 +81,10 @@ def _health_url(url: str) -> str:
     return f"{url.rstrip('/')}/health"
 
 
+def _entry_url(url: str) -> str:
+    return f"{url.rstrip('/')}/dashboard"
+
+
 def _is_app_healthy(url: str) -> bool:
     try:
         with urllib.request.urlopen(_health_url(url), timeout=1.0) as response:
@@ -88,10 +93,29 @@ def _is_app_healthy(url: str) -> bool:
         return False
 
 
+def _is_frontend_ready(url: str) -> bool:
+    try:
+        with urllib.request.urlopen(_entry_url(url), timeout=1.5) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+            if response.status < 200 or response.status >= 300:
+                return False
+        if "id=\"app\"" not in html or "/assets/" not in html:
+            return False
+        asset_start = html.find("/assets/")
+        asset_end = html.find("\"", asset_start)
+        if asset_start == -1 or asset_end == -1:
+            return False
+        asset_url = urljoin(url, html[asset_start:asset_end])
+        with urllib.request.urlopen(asset_url, timeout=1.5) as asset_response:
+            return 200 <= asset_response.status < 300
+    except Exception:
+        return False
+
+
 def _wait_for_app(url: str, timeout_seconds: float = 30.0) -> bool:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        if _is_app_healthy(url):
+        if _is_app_healthy(url) and _is_frontend_ready(url):
             return True
         time.sleep(0.2)
     return False
@@ -196,7 +220,7 @@ def _start_embedded_server(app, port: int):
 
 def _open_browser(url: str) -> None:
     _log(f"Opening browser {url}")
-    webbrowser.open(url, new=2)
+    webbrowser.open(url, new=0)
 
 
 def _serve_until_stopped(thread: threading.Thread) -> None:
@@ -215,14 +239,14 @@ def run_app() -> None:
 
         existing_url = _connect_to_existing_instance()
         if existing_url:
-            _open_browser(existing_url)
+            _log(f"Existing instance is already running at {existing_url}; skip opening another browser tab")
             return
 
         control_socket = _acquire_instance_control_socket()
         if control_socket is None:
             existing_url = _wait_for_existing_instance_url()
             if existing_url:
-                _open_browser(existing_url)
+                _log(f"Existing instance became ready at {existing_url}; skip opening another browser tab")
                 return
             raise RuntimeError("Another launcher instance is starting, but did not share a URL.")
         _SERVER_RUNTIME["control_socket"] = control_socket
@@ -230,7 +254,8 @@ def run_app() -> None:
         from src.infrastructure.config.settings import settings
 
         port = _find_available_port(settings.server_port)
-        url = f"http://{APP_HOST}:{port}"
+        base_url = f"http://{APP_HOST}:{port}"
+        url = _entry_url(base_url)
         if port != settings.server_port:
             _log(f"Configured port {settings.server_port} is busy, using {port}")
 
@@ -239,13 +264,13 @@ def run_app() -> None:
 
         from src.app import app
 
-        _log(f"Starting embedded server at {url}")
+        _log(f"Starting embedded server at {base_url}")
         server, thread = _start_embedded_server(app, port)
         _SERVER_RUNTIME["server"] = server
         _SERVER_RUNTIME["thread"] = thread
 
-        if not _wait_for_app(url):
-            raise RuntimeError(f"Server did not become healthy at {_health_url(url)}")
+        if not _wait_for_app(base_url):
+            raise RuntimeError(f"Server did not become ready at {base_url}")
 
         ready_event.set()
         _open_browser(url)

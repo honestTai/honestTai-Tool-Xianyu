@@ -28,7 +28,8 @@ from typing import Any
 APP_ID = "honestTai-Tool-Xianyu"
 APP_VERSION = "2.0.0"
 DEFAULT_HEARTBEAT_SECONDS = 300
-DEFAULT_CLIENT_SECRET = "honesttai-xianyu-license-client-v1"
+DEFAULT_CLIENT_SECRET = "change-this-client-secret"
+DEFAULT_LICENSE_SERVER_URL = "https://www.javatzt.cn/license"
 _DOTENV_LOADED = False
 
 
@@ -77,7 +78,7 @@ def _load_dotenv_once() -> None:
     try:
         from dotenv import load_dotenv
 
-        load_dotenv(_runtime_dir() / ".env", override=False)
+        load_dotenv(_runtime_dir() / ".env", override=True)
     except Exception:
         pass
 
@@ -168,7 +169,7 @@ class LicenseManager:
     @property
     def configured_server_url(self) -> str:
         _load_dotenv_once()
-        return os.getenv("LICENSE_SERVER_URL", "").strip().rstrip("/")
+        return os.getenv("LICENSE_SERVER_URL", "").strip().rstrip("/") or DEFAULT_LICENSE_SERVER_URL
 
     @property
     def validate_interval_seconds(self) -> int:
@@ -204,7 +205,7 @@ class LicenseManager:
                 message=self._status.message,
                 expires_at=cache.get("expiresAt"),
                 device_id=cache.get("deviceId"),
-                server_url=cache.get("serverUrl"),
+                server_url=self.configured_server_url,
                 last_validated_at=cache.get("lastValidatedAt"),
                 heartbeat_interval_seconds=int(cache.get("heartbeatIntervalSeconds") or DEFAULT_HEARTBEAT_SECONDS),
             )
@@ -274,7 +275,6 @@ class LicenseManager:
 
     def _base_payload(self, license_key: str | None = None, device_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {
-            "appId": APP_ID,
             "appVersion": APP_VERSION,
             "deviceFingerprint": build_device_fingerprint(),
             "deviceName": platform.node() or socket.gethostname(),
@@ -308,8 +308,9 @@ class LicenseManager:
         cache = self.load_cache()
         if not cache:
             raise LicenseError("LICENSE_NOT_ACTIVATED", "尚未激活授权")
+        target_server = self.configured_server_url
         response = self._request(
-            str(cache.get("serverUrl") or self.configured_server_url),
+            target_server,
             "/api/client/validate",
             self._base_payload(
                 license_key=str(cache.get("licenseKey") or ""),
@@ -321,6 +322,7 @@ class LicenseManager:
                 "expiresAt": response.get("expiresAt") or cache.get("expiresAt"),
                 "lastValidatedAt": _utc_now(),
                 "heartbeatIntervalSeconds": int(response.get("heartbeatIntervalSeconds") or cache.get("heartbeatIntervalSeconds") or DEFAULT_HEARTBEAT_SECONDS),
+                "serverUrl": target_server,
                 "serverSignature": response.get("signature") or cache.get("serverSignature"),
             }
         )
@@ -332,8 +334,9 @@ class LicenseManager:
         cache = self.load_cache()
         if not cache:
             raise LicenseError("LICENSE_NOT_ACTIVATED", "尚未激活授权")
+        target_server = self.configured_server_url
         response = self._request(
-            str(cache.get("serverUrl") or self.configured_server_url),
+            target_server,
             "/api/client/heartbeat",
             self._base_payload(
                 license_key=str(cache.get("licenseKey") or ""),
@@ -345,6 +348,7 @@ class LicenseManager:
                 "expiresAt": response.get("expiresAt") or cache.get("expiresAt"),
                 "lastValidatedAt": _utc_now(),
                 "heartbeatIntervalSeconds": int(response.get("heartbeatIntervalSeconds") or cache.get("heartbeatIntervalSeconds") or DEFAULT_HEARTBEAT_SECONDS),
+                "serverUrl": target_server,
                 "serverSignature": response.get("signature") or cache.get("serverSignature"),
             }
         )
