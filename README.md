@@ -1,9 +1,23 @@
-# honestTai-Tool-Xianyu
+<div align="center">
 
-[中文] ｜ [English](README_EN.md)
+# Xianyu Toolkit · 闲鱼监控工具集
 
-基于 Playwright 和 AI 的闲鱼多任务实时监控，提供完整的 Web 管理界面。
+**少一点反复搜索，多一点有条件的商品筛选。**  
+**Less repeated searching. More focused listing discovery.**
 
+[中文](README.md) · [English](README_EN.md) · [查看截图 / Screenshots](#截图) · [GitHub](https://github.com/honestTai/honestTai-Tool-Xianyu) · [HRouter](https://hrouter.net/home)
+
+</div>
+
+在 Web 界面里组织多个监控任务，结合 AI 分析商品，查看匹配结果并通过配置的渠道接收通知。
+
+Manage monitoring tasks in a web interface, analyze listings with AI, review matches, and receive notifications through configured channels.
+
+**适合谁 / Who it’s for**  
+希望按关键词、价格和自定义条件持续跟踪闲鱼商品的用户。  
+Users who want to monitor Xianyu listings with keywords, prices, and custom criteria.
+
+Upstream reference / 上游参考：[Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor).
 
 ## 核心特性
 
@@ -324,3 +338,16 @@ AI 模式会先生成分析标准，再创建任务。现在该流程已改为�
 [![Star History Chart](https://api.star-history.com/svg?repos=Usagi-org/ai-goofish-monitor&type=Date)](https://www.star-history.com/#Usagi-org/ai-goofish-monitor&Date)
 
 ![Alt](https://repobeats.axiom.co/api/embed/b40d8a112271b4bddabadd8fe2635be3c1aa28a3.svg "Repobeats analytics image")
+
+## 作者与 HRouter · About the author
+
+我是 **honestTai**，开发工具，也运营 [HRouter](https://hrouter.net/home)。这里持续分享实用代码、AI 应用、Skills 与插件，把工作中的需求变成可复用的项目。  
+I’m **honestTai**, the developer and operator behind HRouter. I share practical code, AI apps, skills, and plugins built around real workflows.
+
+需要为 AI 编程或应用开发选择模型服务？HRouter 是我运营的模型路由服务。项目的供应商选择与接入方式见下方配置说明。  
+Building with AI? HRouter is my model-routing service for AI coding and applications. Follow this project’s configuration guide when choosing a model provider.
+
+[了解 HRouter · Explore HRouter](https://hrouter.net/home) · [发现更多项目 · More projects](https://github.com/honestTai)
+
+**觉得有用，欢迎 Star；有想法，欢迎到 Issues 交流。**  
+**Star the project if it helps, and share your ideas in Issues.**

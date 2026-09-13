@@ -1,8 +1,18 @@
-# Xianyu Intelligent Monitor Bot
+<div align="center">
 
-[中文](README.md) ｜ [English]
+# Xianyu Toolkit · 闲鱼监控工具集
 
-A Playwright and AI-powered multi-task real-time monitoring tool for Xianyu (闲鱼), featuring a complete web management interface.
+**Less repeated searching. More focused listing discovery.**
+
+[中文](README.md) · [English](README_EN.md) · [Screenshots](#screenshots) · [GitHub](https://github.com/honestTai/honestTai-Tool-Xianyu) · [HRouter](https://hrouter.net/home)
+
+</div>
+
+Manage monitoring tasks in a web interface, analyze listings with AI, review matches, and receive notifications through configured channels.
+
+**Who it’s for:** Users who want to monitor Xianyu listings with keywords, prices, and custom criteria.
+
+Upstream reference / 上游参考：[Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor).
 
 ## Core Features
 
@@ -307,3 +317,13 @@ Also thanks to ClaudeCode/Gemini/Codex and other model tools for freeing our han
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Usagi-org/ai-goofish-monitor&type=Date)](https://www.star-history.com/#Usagi-org/ai-goofish-monitor&Date)
+
+## Meet the author & HRouter
+
+I’m **honestTai**, the developer and operator behind [HRouter](https://hrouter.net/home). I share practical tools, reusable workflows, skills, and plugins on GitHub.
+
+Building with AI? HRouter is my model-routing service for AI coding and applications. Follow this project’s configuration guide when choosing a model provider.
+
+[Explore HRouter](https://hrouter.net/home) · [More projects](https://github.com/honestTai)
+
+If this project helps your workflow, give it a star and share what you build. Feedback and feature ideas are welcome in Issues.
