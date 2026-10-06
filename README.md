@@ -1,149 +1,56 @@
 <div align="center">
 
-# Xianyu Toolkit · 闲鱼监控工具集
+**English** · [简体中文](README.zh-CN.md)
 
-**少一点反复搜索，多一点有条件的商品筛选。**  
-**Less repeated searching. More focused listing discovery.**
-
-[中文](README.md) · [English](README_EN.md) · [查看截图 / Screenshots](#截图) · [GitHub](https://github.com/honestTai/honestTai-Tool-Xianyu) · [HRouter](https://hrouter.net/home)
+[HRouter](https://hrouter.net/home) · [All public projects](https://github.com/honestTai) · [Star & Fork trends](#project-activity)
 
 </div>
 
-在 Web 界面里组织多个监控任务，结合 AI 分析商品，查看匹配结果并通过配置的渠道接收通知。
+[![Repository summary](https://raw.githubusercontent.com/honestTai/honestTai/main/assets/badges/honestTai-Tool-Xianyu.svg)](#project-activity)
+
+<div align="center">
+
+# Xianyu Toolkit · 闲鱼监控工具集
+
+**Less repeated searching. More focused listing discovery.**
+
+[中文](README.zh-CN.md) · [English](README.md) · [Screenshots](#screenshots) · [GitHub](https://github.com/honestTai/honestTai-Tool-Xianyu) · [HRouter](https://hrouter.net/home)
+
+</div>
 
 Manage monitoring tasks in a web interface, analyze listings with AI, review matches, and receive notifications through configured channels.
 
-**适合谁 / Who it’s for**  
-希望按关键词、价格和自定义条件持续跟踪闲鱼商品的用户。  
-Users who want to monitor Xianyu listings with keywords, prices, and custom criteria.
+**Who it’s for:** Users who want to monitor Xianyu listings with keywords, prices, and custom criteria.
 
 Upstream reference / 上游参考：[Usagi-org/ai-goofish-monitor](https://github.com/Usagi-org/ai-goofish-monitor).
 
-## 核心特性
+## Core Features
 
-- **Web 可视化管理**: 任务管理、账号管理、AI 标准编辑、运行日志、结果浏览
-- **AI 驱动**: 自然语言创建任务，多模态模型深度分析商品
-- **多任务并发**: 独立配置关键词、价格、筛选条件和 AI Prompt
-- **高级筛选**: 包邮、新发布时间范围、省/市/区三级区域筛选
-- **即时通知**: 支持 ntfy.sh、企业微信、Bark、Telegram、Webhook等多渠道
-- **定时调度**: 支持 Cron 配置周期性任务
-- **账号与代理轮换**: 多账号管理、任务绑定账号、代理池轮换与失败重试
-- **Docker 部署**: 一键容器化部署
+- **Web Visual Management**: Task management, account management, AI criteria editing, run logs, results browsing
+- **AI-Driven**: Natural language task creation, multimodal model for in-depth product analysis
+- **Multi-Task Concurrency**: Independent configuration for keywords, prices, filters, and AI prompts
+- **SQLite as Primary Storage**: Tasks, results, and price history are persisted in one embedded database instead of repeatedly scanning `jsonl`
+- **Advanced Filtering**: Free shipping, new listing time range, province/city/district filtering
+- **Instant Notifications**: Supports ntfy.sh, WeChat Work (企业微信), Bark, Telegram, Webhook
+- **Scheduled Tasks**: Cron expression configuration for periodic tasks
+- **Account & Proxy Rotation**: Multi-account management, task-account binding, proxy pool rotation with failure retry
+- **Docker Deployment**: One-click containerized deployment
 
-## 截图
+## Screenshots
 
-![监控概览](static/img.png)
-![任务管理](static/img_1.png)
-![结果查看](static/img_2.png)
-![通知推送](static/img_3.png)
+![Monitoring Overview](static/img.png)
+![Task Management](static/img_1.png)
+![Result Viewer](static/img_2.png)
+![Notification Settings](static/img_3.png)
 
-## 🐳 Docker 部署（推荐）
+## Quick Start
 
-```bash
-git clone https://github.com/Usagi-org/ai-goofish-monitor && cd ai-goofish-monitor
-cp .env.example .env
-vim .env # 填写相关配置项
-docker compose up -d
-docker compose logs -f app
-docker compose down
-```
-
-如果镜像无法访问或下载速度慢，可尝试使用加速：
-```bash
-
-docker pull ghcr.nju.edu.cn/usagi-org/ai-goofish:latest
-docker tag ghcr.nju.edu.cn/usagi-org/ai-goofish:latest ghcr.io/usagi-org/ai-goofish:latest
-docker compose up -d
-
-```
-
-- 默认 Web UI 地址：`http://127.0.0.1:8000`
-- Docker 镜像已内置 Chromium，无需宿主机额外安装浏览器。
-- 官方镜像地址：`ghcr.io/usagi-org/ai-goofish:latest`
-- 更新镜像：`docker compose pull && docker compose up -d`
-- 如果你修改了 `.env` 中的 `SERVER_PORT`，请同步更新 `docker-compose.yaml` 里的端口映射。
-- `docker-compose.yaml` 默认会把 SQLite 主库挂载到 `./data:/app/data`，数据库文件默认为 `data/app.sqlite3`
-- 目前默认持久化这些目录：
-    - `data/`  SQLite 主存储（任务、结果、价格历史）
-    - `state/`  登录状态 cookie 文件
-    - `prompts/`  任务提示词
-    - `logs/`  运行日志
-    - `images/`  商品图片与任务临时图片目录
-    - `config.json`、`jsonl/`、`price_history/`  首次升级到 SQLite 时用于兼容导入的旧数据源
-
-### 数据存储与迁移
-
-- 当前在线主存储为 SQLite，默认路径 `data/app.sqlite3`
-- 可通过环境变量 `APP_DATABASE_FILE` 自定义数据库路径；Docker 默认设置为 `/app/data/app.sqlite3`
-- 应用启动时会自动建库建表，并尝试从旧的 `config.json`、`jsonl/`、`price_history/` 导入一次历史数据
-- `state/`、`prompts/`、`logs/`、`images/` 仍然是文件系统目录，不在 SQLite 中
-- 商品图片会临时落到 `images/task_images_<task_name>/`，任务结束后默认会清理
-- 首次升级完成并确认 `data/app.sqlite3` 中数据正确后，可视部署方式决定是否继续保留旧的 `config.json`、`jsonl/`、`price_history/` 挂载
-
-### 最少配置
-
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `OPENAI_API_KEY` | AI 模型 API Key | 是 |
-| `OPENAI_BASE_URL` | OpenAI 兼容接口地址 | 是 |
-| `OPENAI_MODEL_NAME` | 支持图片输入的模型名称 | 是 |
-| `WEB_USERNAME` / `WEB_PASSWORD` | Web UI 登录账号密码，默认 `admin/admin123` | 否 |
-
-其余配置见下方“配置说明”。
-
-
-### 第一次使用
-
-1. 打开默认 Web UI `http://127.0.0.1:8000` 并登录。
-2. 进入“闲鱼账号管理”，使用 [Chrome 扩展](https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa) 导出并粘贴闲鱼登录态 JSON。
-3. 登录态文件会保存到 `state/` 目录，例如 `state/acc_1.json`。
-4. 回到“任务管理”，创建任务并绑定账号后即可运行。
-
-### 创建第一个任务
-
-- `AI判断`：填写“详细需求”，提交后会弹出独立进度弹窗，后台异步生成分析标准。
-- `关键词判断`：填写关键词规则，任务会直接创建，不经过 AI 生成流程。
-- `区域筛选`：已改为省 / 市 / 区三级选择器，数据基于闲鱼页面抓取快照内置。
-
-
-
-## 用户使用说明
-
-<details>
-<summary>点击展开 Web UI 功能说明</summary>
-
-### 任务管理
-
-- 支持 AI 创建、关键词规则、价格范围、新发布范围、区域筛选、账号绑定、定时规则。
-- AI 任务创建是后台 job 流程，提交后会打开单独的进度弹窗。
-- 区域筛选会显著缩小结果集，默认留空。
-
-### 账号管理
-
-- 支持导入、更新、删除闲鱼账号登录态。
-- 每个任务可指定账号，也可不绑定并交给系统自动选择。
-
-### 结果查看与运行日志
-
-- 结果页和导出功能现在从 SQLite 查询，不再直接扫描 `jsonl` 文件。
-- 日志页按任务展示运行过程，便于排查登录态失效、风控和 AI 调用问题。
-
-### 系统设置
-
-- 可查看系统状态、编辑 Prompt、调整代理与轮换相关配置。
-
-</details>
-
-
-
-## 开发者开发
-
-### 环境要求
+### Requirements
 
 - Python 3.10+
-- Node.js + npm（本地验证 `Node v20.18.3` 可完成前端构建）
-- Playwright CLI 与 Chromium，首次运行前建议执行 `python3 -m pip install playwright && python3 -m playwright install chromium`
-- Chrome / Edge 浏览器（Linux 环境也可使用 Chromium；`start.sh` 会先检查浏览器是否存在）
+- Node.js + npm (`Node v20.18.3` has been verified to complete the frontend build)
+- Playwright CLI and Chromium. Before the first local run, install them with `python3 -m pip install playwright && python3 -m playwright install chromium`
+- Chrome or Edge on desktop systems. On Linux, Chromium also works. `start.sh` checks this prerequisite before continuing
 
 ```bash
 git clone https://github.com/Usagi-org/ai-goofish-monitor
@@ -151,72 +58,158 @@ cd ai-goofish-monitor
 cp .env.example .env
 ```
 
-### 一键启动
+### Minimum Configuration
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | AI model API key | Yes |
+| `OPENAI_BASE_URL` | OpenAI-compatible API base URL | Yes |
+| `OPENAI_MODEL_NAME` | Model name with image input support | Yes |
+| `WEB_USERNAME` / `WEB_PASSWORD` | Web UI login credentials, default `admin/admin123` | No |
+
+See "Configuration" below for the rest.
+
+### Start Locally
 
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
-`start.sh` 会先检查 Playwright CLI 和浏览器前置条件；在前置条件满足后自动安装项目依赖、构建前端、复制构建产物并启动后端。
+`start.sh` first validates the Playwright CLI and browser prerequisites. Once they are available, it installs project dependencies, builds the frontend, copies the artifacts, and starts the backend.
 
-### 手动启动
+### First-Time Setup
+
+1. Open the default Web UI at `http://127.0.0.1:8000` and sign in.
+2. Go to "Xianyu Account Management" and use the [Chrome Extension](https://chromewebstore.google.com/detail/xianyu-login-state-extrac/eidlpfjiodpigmfcahkmlenhppfklcoa) to export and paste the Xianyu login-state JSON.
+3. Login-state files are stored in `state/`, for example `state/acc_1.json`.
+4. Go back to "Task Management", create a task, bind an account if needed, and run it.
+
+### Create Your First Task
+
+- `AI mode`: fill in the requirement description. Submission opens a separate progress dialog while the criteria are generated asynchronously.
+- `Keyword mode`: provide keyword rules and the task is created immediately.
+- `Region filter`: now uses a province / city / district selector backed by an embedded Xianyu page snapshot instead of manual text input.
+
+## 🐳 Docker Deployment (Recommended)
 
 ```bash
-# 后端
+git clone https://github.com/Usagi-org/ai-goofish-monitor && cd ai-goofish-monitor
+cp .env.example .env
+vim .env # fill in the required values
+docker compose up -d
+docker compose logs -f app
+docker compose down
+```
+
+- Default Web UI: `http://127.0.0.1:8000`
+- The published Docker image already includes Chromium, so no extra browser install is required on the host.
+- Update image: `docker compose pull && docker compose up -d`
+- If you change `SERVER_PORT` in `.env`, update the `ports` mapping in `docker-compose.yaml` as well.
+- `docker-compose.yaml` now mounts the primary SQLite database directory as `./data:/app/data`, with the default database file at `data/app.sqlite3`
+- These paths are persisted by default:
+  - `data/` for the SQLite primary store (tasks, results, price history)
+  - `state/` for login-state cookie files
+  - `prompts/` for task prompt files
+  - `logs/` for runtime logs
+  - `images/` for downloaded product images and per-task temporary image folders
+  - `config.json`, `jsonl/`, and `price_history/` as legacy sources for the first SQLite migration
+
+### Storage and Migration
+
+- SQLite is now the online primary storage, with the default path `data/app.sqlite3`
+- You can override the database path with `APP_DATABASE_FILE`; Docker sets it to `/app/data/app.sqlite3`
+- On startup, the app initializes the schema and tries to import existing data once from legacy `config.json`, `jsonl/`, and `price_history/`
+- `state/`, `prompts/`, `logs/`, and `images/` remain filesystem-based and are not stored in SQLite
+- Product images are temporarily downloaded to `images/task_images_<task_name>/` and are normally cleaned up when the task finishes
+- After the first upgrade and after verifying the database contents in `data/app.sqlite3`, you can decide whether to keep the legacy `config.json`, `jsonl/`, and `price_history/` mounts
+
+## User Guide
+
+<details>
+<summary>Click to expand Web UI usage notes</summary>
+
+### Task Management
+
+- Supports AI creation, keyword rules, price range, new listing filters, region filters, account binding, and cron scheduling.
+- AI task creation runs as a background job and shows a dedicated progress dialog after submission.
+- Region filtering can greatly reduce results, so leaving it empty is the safer default.
+
+### Account Management
+
+- Import, update, and delete Xianyu login states.
+- Each task can bind a specific account or leave account selection to the system.
+
+### Results and Logs
+
+- The results page and export endpoints now query SQLite instead of directly scanning `jsonl` files.
+- The logs page is the first place to inspect login-state expiry, anti-bot issues, or AI call failures.
+
+### System Settings
+
+- View system status, edit prompts, and adjust proxy / rotation-related settings.
+
+</details>
+
+## Developer Guide
+
+### Local Development
+
+```bash
+# backend
 python -m src.app
-# 或
+# or
 uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
 
-# 前端
+# frontend
 cd web-ui
 npm install
 npm run dev
 ```
 
-- FastAPI 启动时会自动初始化 SQLite，并在首次启动时尝试导入旧的 `config.json/jsonl/price_history`
-- `spider_v2.py` 默认从 SQLite 读取任务；只有显式传入 `--config <path>` 时才会走 JSON 配置兼容模式
-- 默认数据库路径为 `data/app.sqlite3`
-- Vite 开发服务器会将 `/api`、`/auth`、`/ws` 代理到 `http://127.0.0.1:8000`。
-- `npm run build` 先生成 `web-ui/dist/`，`start.sh` 再复制到仓库根目录 `dist/`。
-- FastAPI 负责提供根目录 `dist/index.html` 和 `dist/assets/`。
-- `./start.sh` 默认输出访问地址 `http://localhost:8000` 和 API 文档 `http://localhost:8000/docs`。
+- FastAPI initializes SQLite on startup and performs the one-time legacy import from `config.json/jsonl/price_history` when needed
+- `spider_v2.py` now loads tasks from SQLite by default; JSON config is only used when `--config <path>` is passed explicitly
+- The default local database path is `data/app.sqlite3`
+- The Vite dev server proxies `/api`, `/auth`, and `/ws` to `http://127.0.0.1:8000`.
+- `npm run build` writes `web-ui/dist/`, and `start.sh` copies it to the repository root `dist/`.
+- FastAPI serves `dist/index.html` and `dist/assets/` from the repository root.
+- `./start.sh` prints the default app URL `http://localhost:8000` and API docs URL `http://localhost:8000/docs`.
 
-### 测试与校验
+### Validation
 
 ```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest
 cd web-ui && npm run build
 ```
 
-### 任务创建 API
+### Task Creation API
 
 <details>
-<summary>点击展开 API 行为说明</summary>
+<summary>Click to expand API behavior</summary>
 
 - `POST /api/tasks/generate`
-  - `decision_mode=ai`：返回 `202` 和 `job`，需要继续轮询进度。
-  - `decision_mode=keyword`：直接返回已创建任务。
-- `GET /api/tasks/generate-jobs/{job_id}`：查询 AI 任务生成进度。
-- `POST /auth/status`：校验 Web UI 登录凭据。
+  - `decision_mode=ai`: returns `202` with a `job`; the client should poll for progress.
+  - `decision_mode=keyword`: returns the created task directly.
+- `GET /api/tasks/generate-jobs/{job_id}`: fetch AI task-generation progress.
+- `POST /auth/status`: validate Web UI credentials.
 
 </details>
 
-## 配置说明
+## Configuration
 
 <details>
-<summary>点击展开常用配置项</summary>
+<summary>Click to expand common configuration items</summary>
 
-### AI 与运行时
+### AI and Runtime
 
-- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`：AI 模型接入必填项。
-- `PROXY_URL`：为 AI 请求单独指定 HTTP/SOCKS5 代理。
-- `RUN_HEADLESS`：是否以无头模式运行爬虫；Docker 中应保持 `true`。
-- `SERVER_PORT`：后端监听端口，默认 `8000`。
-- `LOGIN_IS_EDGE`：本地环境可切换为 Edge 内核；Docker 镜像未内置 Edge，容器内会固定使用 Chromium。
-- `PCURL_TO_MOBILE`：是否将 PC 商品链接转换为移动端链接。
+- `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL_NAME`: required AI model settings.
+- `PROXY_URL`: dedicated HTTP/SOCKS5 proxy for AI requests.
+- `RUN_HEADLESS`: whether the scraper runs headless; keep it `true` in Docker.
+- `SERVER_PORT`: backend port, default `8000`.
+- `LOGIN_IS_EDGE`: use Edge instead of Chrome locally; Docker images do not bundle Edge and always run with Chromium.
+- `PCURL_TO_MOBILE`: convert desktop item URLs to mobile URLs.
 
-### 通知
+### Notifications
 
 - `NTFY_TOPIC_URL`
 - `GOTIFY_URL` / `GOTIFY_TOKEN`
@@ -225,7 +218,7 @@ cd web-ui && npm run build
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` / `TELEGRAM_API_BASE_URL`
 - `WEBHOOK_*`
 
-### 代理轮换与失败保护
+### Proxy Rotation and Failure Guard
 
 - `PROXY_ROTATION_ENABLED`
 - `PROXY_ROTATION_MODE`
@@ -236,100 +229,98 @@ cd web-ui && npm run build
 - `TASK_FAILURE_PAUSE_SECONDS`
 - `TASK_FAILURE_GUARD_PATH`
 
-完整示例见 `.env.example`。
+See `.env.example` for the full list.
 
 </details>
 
-## Web 界面认证
+## Web Authentication
 
 <details>
-<summary>点击展开认证说明</summary>
+<summary>Click to expand authentication notes</summary>
 
-- Web UI 当前使用登录页收集账号密码，并通过 `POST /auth/status` 校验。
-- 登录成功后，前端会在浏览器本地保存登录状态，用于路由守卫和 WebSocket 初始化。
-- 默认账号密码为 `admin/admin123`，生产环境请务必修改。
+- The Web UI uses a login page and validates credentials through `POST /auth/status`.
+- After login, the frontend stores local auth state for route guards and WebSocket startup.
+- The default credentials are `admin/admin123`; change them in production.
 
 </details>
 
-## 🚀 工作流程
+## 🚀 Workflow
 
-下图描述了单个监控任务从启动到完成的核心处理逻辑。主服务运行于 `src.app`，按用户操作或定时调度启动一个或多个任务进程。
+The diagram below shows the core processing flow of a monitoring task. The main service runs in `src.app` and launches one or more task processes based on user actions or schedule triggers.
 
 ```mermaid
 graph TD
-    A[启动监控任务] --> B[选择账号/代理配置];
-    B --> C[任务: 搜索商品];
-    C --> D{发现新商品?};
-    D -- 是 --> E[抓取商品详情 & 卖家信息];
-    E --> F[下载商品图片];
-    F --> G[调用AI进行分析];
-    G --> H{AI是否推荐?};
-    H -- 是 --> I[发送通知];
-    H -- 否 --> J[保存记录到 SQLite];
+    A[Start Monitoring Task] --> B[Select Account/Proxy Configuration];
+    B --> C[Task: Search Products];
+    C --> D{Found New Products?};
+    D -- Yes --> E[Scrape Product Details & Seller Info];
+    E --> F[Download Product Images];
+    F --> G[Call AI for Analysis];
+    G --> H{AI Recommended?};
+    H -- Yes --> I[Send Notification];
+    H -- No --> J[Save Record to SQLite];
     I --> J;
-    D -- 否 --> K[翻页/等待];
+    D -- No --> K[Next Page/Wait];
     K --> C;
     J --> C;
-    C --> L{触发风控/异常?};
-    L -- 是 --> M[账号/代理轮换并重试];
+    C --> L{Risk Control/Exception?};
+    L -- Yes --> M[Account/Proxy Rotation and Retry];
     M --> C;
 ```
 
-## 常见问题
+## FAQ
 
 <details>
-<summary>点击展开常见问题</summary>
+<summary>Click to expand FAQ</summary>
 
-### AI 任务创建为什么不是立即完成？
+### Why does AI task creation take time?
 
-AI 模式会先生成分析标准，再创建任务。现在该流程已改为后台 job，提交后会显示独立进度弹窗，避免表单长时间卡住。
+In AI mode, the system generates analysis criteria before the task itself is created. This now runs as a background job with a separate progress dialog instead of blocking the task form.
 
-### 区域筛选为什么默认建议留空？
+### Why is the region filter optional by default?
 
-区域筛选会显著减少搜索结果，适合明确只看某个区域的场景。若你先验证整体市场，建议先不填。
+Region filtering can sharply reduce result volume. Leave it empty if you want a broader market scan first.
 
-### 本地页面打开后提示前端构建产物不存在？
+### Why does the app say the frontend build artifacts are missing?
 
-说明根目录 `dist/` 缺失。可直接执行 `./start.sh`，或先在 `web-ui/` 里执行 `npm run build`，再确认构建产物已复制到仓库根目录。
+It means the repository root `dist/` directory is missing. Run `./start.sh`, or build the frontend in `web-ui/` and make sure the artifacts are copied to the root `dist/`.
 
-### `./start.sh` 为什么提示缺少 Playwright 或浏览器？
+### Why does `./start.sh` complain about missing Playwright or a browser?
 
-这是脚本的前置检查。请先安装 Playwright CLI 与 Chromium，并确保系统中可用 Chrome / Edge（Linux 环境也可用 Chromium），然后重新执行 `./start.sh`。
+The script performs a prerequisite check before installing project dependencies. Install the Playwright CLI and Chromium first, then make sure Chrome, Edge, or Chromium is available on the system and rerun `./start.sh`.
 
 </details>
 
-
-
-## 致谢
+## Acknowledgments
 
 <details>
-<summary>点击展开致谢内容</summary>
+<summary>Click to expand acknowledgments</summary>
 
-本项目在开发过程中参考了以下优秀项目，特此感谢：
+This project referenced the following excellent projects during development. Special thanks to:
 
 - [superboyyy/xianyu_spider](https://github.com/superboyyy/xianyu_spider)
 
-以及感谢LinuxDo相关人员的脚本贡献
+Also thanks to LinuxDo contributors for script contributions:
 
 - [@jooooody](https://linux.do/u/jooooody/summary)
 
-以及感谢 [LinuxDo](https://linux.do/) 社区。
+And thanks to the [LinuxDo](https://linux.do/) community.
 
-以及感谢 ClaudeCode/Gemini/Codex 等模型工具，解放双手 体验Vibe Coding的快乐。
+Also thanks to ClaudeCode/Gemini/Codex and other model tools for freeing our hands and experiencing the joy of Vibe Coding.
 
 </details>
 
 
-## 注意事项
+## Notices
 
 <details>
-<summary>点击展开注意事项详情</summary>
+<summary>Click to expand notice details</summary>
 
-- 请遵守闲鱼的用户协议和robots.txt规则，不要进行过于频繁的请求，以免对服务器造成负担或导致账号被限制。
-- 本项目仅供学习和技术研究使用，请勿用于非法用途。
-- 本项目采用 [MIT 许可证](LICENSE) 发布，按"现状"提供，不提供任何形式的担保。
-- 项目作者及贡献者不对因使用本软件而导致的任何直接、间接、附带或特殊的损害或损失承担责任。
-- 如需了解更多详细信息，请查看 [免责声明](DISCLAIMER.md) 文件。
+- Please comply with Xianyu's user agreement and robots.txt rules. Do not make frequent requests to avoid burdening the server or having your account restricted.
+- This project is for learning and technical research purposes only. Do not use it for illegal purposes.
+- This project is released under the [MIT License](LICENSE), provided "as is", without any form of warranty.
+- The project authors and contributors are not responsible for any direct, indirect, incidental, or special damages or losses caused by the use of this software.
+- For more details, please refer to the [Disclaimer](DISCLAIMER.md) file.
 
 </details>
 
@@ -337,17 +328,26 @@ AI 模式会先生成分析标准，再创建任务。现在该流程已改为�
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Usagi-org/ai-goofish-monitor&type=Date)](https://www.star-history.com/#Usagi-org/ai-goofish-monitor&Date)
 
-![Alt](https://repobeats.axiom.co/api/embed/b40d8a112271b4bddabadd8fe2635be3c1aa28a3.svg "Repobeats analytics image")
+## Meet the author & HRouter
 
-## 作者与 HRouter · About the author
+I’m **honestTai**, the developer and operator behind [HRouter](https://hrouter.net/home). I share practical tools, reusable workflows, skills, and plugins on GitHub.
 
-我是 **honestTai**，开发工具，也运营 [HRouter](https://hrouter.net/home)。这里持续分享实用代码、AI 应用、Skills 与插件，把工作中的需求变成可复用的项目。  
-I’m **honestTai**, the developer and operator behind HRouter. I share practical code, AI apps, skills, and plugins built around real workflows.
-
-需要为 AI 编程或应用开发选择模型服务？HRouter 是我运营的模型路由服务。项目的供应商选择与接入方式见下方配置说明。  
 Building with AI? HRouter is my model-routing service for AI coding and applications. Follow this project’s configuration guide when choosing a model provider.
 
-[了解 HRouter · Explore HRouter](https://hrouter.net/home) · [发现更多项目 · More projects](https://github.com/honestTai)
+[Explore HRouter](https://hrouter.net/home) · [More projects](https://github.com/honestTai)
 
-**觉得有用，欢迎 Star；有想法，欢迎到 Issues 交流。**  
-**Star the project if it helps, and share your ideas in Issues.**
+If this project helps your workflow, give it a star and share what you build. Feedback and feature ideas are welcome in Issues.
+
+---
+
+<a id="project-activity"></a>
+
+## Project activity
+
+Star / Fork totals and retained-event history, scheduled to refresh daily.
+
+[![Star and Fork history for honestTai-Tool-Xianyu](https://raw.githubusercontent.com/honestTai/honestTai/main/assets/metrics/honestTai-Tool-Xianyu.svg)](https://github.com/honestTai/honestTai/blob/main/data/README.md)
+
+[Observed daily totals](https://raw.githubusercontent.com/honestTai/honestTai/main/assets/metrics/honestTai-Tool-Xianyu-daily.svg) · [Methodology](https://github.com/honestTai/honestTai/blob/main/data/METHODOLOGY.md) · [All public projects](https://github.com/honestTai)
+
+<sub>Historical curves reconstruct currently retained stars and visible forks, not historical net totals. Separate daily observations start on 2026-10-06; no fabricated backfill.</sub>
